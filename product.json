@@ -14,7 +14,7 @@
 	},
 	"folderUri": {
 		"scheme": "memfs",
-		"path": "/sample-folder"
+		"path": "/counter"
 	},
 	"additionalBuiltinExtensions": [
 		{
