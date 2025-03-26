@@ -18,8 +18,8 @@
 	},
 	"additionalBuiltinExtensions": [
 		{
-			"scheme": "http",
-			"authority": "localhost:8080",
+			"scheme": "https",
+			"authority": "ide.tact-lang.org",
 			"path": "static/extensions/vscode-web-playground"
 		}
 	]
