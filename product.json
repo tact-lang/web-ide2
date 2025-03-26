@@ -1,0 +1,26 @@
+{
+	"productConfiguration": {
+		"nameShort": "Code Web",
+		"nameLong": "Code Web",
+		"applicationName": "code-web",
+		"dataFolderName": ".vscode-web",
+		"version": "1.66.0",
+		"extensionEnabledApiProposals": {
+			"vscode.vscode-web-playground": [
+				"fileSearchProvider",
+				"textSearchProvider"
+			]
+		}
+	},
+	"folderUri": {
+		"scheme": "memfs",
+		"path": "/sample-folder"
+	},
+	"additionalBuiltinExtensions": [
+		{
+			"scheme": "http",
+			"authority": "localhost:8080",
+			"path": "static/extensions/vscode-web-playground"
+		}
+	]
+}
