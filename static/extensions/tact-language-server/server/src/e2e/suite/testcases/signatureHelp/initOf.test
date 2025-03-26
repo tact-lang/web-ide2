@@ -1,0 +1,110 @@
+========================================================================
+initOf with one argument
+========================================================================
+primitive Int;
+
+contract ContractA {
+    init(a: Int) {
+
+    }
+}
+
+contract ContractB {
+    init() {
+        initOf ContractA(<caret>)
+    }
+}
+------------------------------------------------------------------------
+a: Int
+init(a: Int)
+
+========================================================================
+initOf with many arguments
+========================================================================
+primitive Int;
+
+contract ContractA {
+    init(a: Int, b: Int, c: Int) {
+        // ...
+    }
+}
+
+contract ContractB {
+    init() {
+        initOf ContractA(<caret>)
+    }
+}
+------------------------------------------------------------------------
+a: Int
+init(a: Int, b: Int, c: Int)
+
+========================================================================
+initOf with many arguments (first is filled)
+========================================================================
+primitive Int;
+
+contract ContractA {
+    init(a: Int, b: Int, c: Int) {
+        // ...
+    }
+}
+
+contract ContractB {
+    init() {
+        initOf ContractA(42, <caret>)
+    }
+}
+------------------------------------------------------------------------
+b: Int
+init(a: Int, b: Int, c: Int)
+
+========================================================================
+initOf for contract with parameter
+========================================================================
+primitive Int;
+
+contract ContractA(a: Int) {
+}
+
+contract ContractB {
+    init() {
+        initOf ContractA(<caret>)
+    }
+}
+------------------------------------------------------------------------
+a: Int
+init(a: Int)
+
+========================================================================
+initOf for contract with parameters
+========================================================================
+primitive Int;
+
+contract ContractA(a: Int, other: Int) {
+}
+
+contract ContractB {
+    init() {
+        initOf ContractA(10, <caret>)
+    }
+}
+------------------------------------------------------------------------
+other: Int
+init(a: Int, other: Int)
+
+========================================================================
+initOf for contract without parameters
+========================================================================
+primitive Int;
+
+contract ContractA {
+}
+
+contract ContractB {
+    init() {
+        initOf ContractA(<caret>)
+    }
+}
+------------------------------------------------------------------------
+
+init()

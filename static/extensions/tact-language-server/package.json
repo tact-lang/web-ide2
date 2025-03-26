@@ -1,0 +1,602 @@
+{
+    "name": "vscode-tact",
+    "displayName": "Tact Language",
+    "description": "Support for Tact Language in VS Code",
+    "keywords": [
+        "TON",
+        "The Open Network",
+        "Tact",
+        "Smart contract"
+    ],
+    "version": "0.4.1",
+    "engines": {
+        "vscode": "^1.63.0"
+    },
+    "icon": "logo.png",
+    "activationEvents": [
+        "onLanguage:tact"
+    ],
+    "categories": [
+        "Programming Languages"
+    ],
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/tact-lang/tact-language-server"
+    },
+    "author": "TON Studio",
+    "publisher": "tonstudio",
+    "license": "MIT",
+    "scripts": {
+        "test": "yarn jest",
+        "build": "webpack",
+        "package": "npx vsce package --no-yarn",
+        "lint": "eslint --cache .",
+        "fmt": "prettier --write -l --cache .",
+        "fmt:check": "prettier --check --cache .",
+        "grammar:wasm": "yarn grammar:tact:wasm && yarn grammar:fift:wasm",
+        "grammar:tact:wasm": "cd tree-sitter-tact && tree-sitter generate && tree-sitter build --wasm",
+        "grammar:fift:wasm": "cd tree-sitter-fift && tree-sitter generate && tree-sitter build --wasm",
+        "watch": "webpack --watch",
+        "test:e2e": "yarn test:e2e:compile && ts-node server/src/e2e/runTest.ts",
+        "test:e2e:update": "yarn test:e2e:compile && TACT_LS_UPDATE_SNAPSHOTS=true ts-node server/src/e2e/runTest.ts",
+        "test:e2e:coverage": "yarn test:e2e:compile && c8 ts-node server/src/e2e/runTest.ts",
+        "test:e2e:compile": "tsc -p ./server/src/e2e/tsconfig.json",
+        "postinstall": "husky"
+    },
+    "main": "./dist/client",
+    "contributes": {
+        "languages": [
+            {
+                "id": "tact",
+                "aliases": [
+                    "Tact"
+                ],
+                "extensions": [
+                    ".tact"
+                ],
+                "icon": {
+                    "light": "./dist/icons/icon-light.svg",
+                    "dark": "./dist/icons/icon-dark.svg"
+                },
+                "configuration": "./language-configuration.json"
+            },
+            {
+                "id": "tact-markdown-injection"
+            },
+            {
+                "id": "fift",
+                "aliases": [
+                    "Fift"
+                ],
+                "extensions": [
+                    ".fif"
+                ],
+                "icon": {
+                    "light": "./dist/icons/ton-icon.svg",
+                    "dark": "./dist/icons/ton-icon.svg"
+                },
+                "configuration": "./fift-language-configuration.json"
+            },
+            {
+                "id": "boc",
+                "extensions": [
+                    ".boc"
+                ],
+                "aliases": [
+                    "TON BoC"
+                ]
+            }
+        ],
+        "grammars": [
+            {
+                "language": "tact",
+                "scopeName": "source.tact",
+                "path": "./syntaxes/.tmLanguage.json"
+            },
+            {
+                "language": "fift",
+                "scopeName": "source.fift",
+                "path": "./syntaxes/fift.tmLanguage.json"
+            },
+            {
+                "language": "tact-markdown-injection",
+                "scopeName": "markdown.tact.codeblock",
+                "path": "./syntaxes/tact-markdown-injection.json",
+                "injectTo": [
+                    "text.html.markdown"
+                ],
+                "embeddedLanguages": {
+                    "meta.embedded.block.tact": "tact"
+                }
+            }
+        ],
+        "snippets": [],
+        "commands": [
+            {
+                "command": "tact.showParent",
+                "title": "Show Parent Element",
+                "category": "Tact"
+            },
+            {
+                "command": "tact.build",
+                "title": "Build Project",
+                "category": "Tact",
+                "icon": "$(gear)",
+                "problemMatcher": [
+                    "$tact"
+                ]
+            },
+            {
+                "command": "tact/getTypeAtPosition",
+                "title": "Get Type At Position",
+                "category": "Tact"
+            },
+            {
+                "command": "tact/executeHoverProvider",
+                "title": "Get Documentation At Position",
+                "category": "Tact"
+            },
+            {
+                "command": "tact/executeGetScopeProvider",
+                "title": "Get Scope Information"
+            },
+            {
+                "command": "tact.build",
+                "title": "Build Tact Project",
+                "category": "Tact"
+            },
+            {
+                "command": "tact.openBocFile",
+                "title": "Open Decompiled BoC file",
+                "category": "Tact"
+            },
+            {
+                "command": "tact.saveBocDecompiled",
+                "title": "Decompile BoC to Fift Assembly File",
+                "category": "Tact"
+            },
+            {
+                "command": "tact.runMisti",
+                "title": "Run Misti Analysis",
+                "category": "Tact",
+                "icon": "$(search)",
+                "problemMatcher": [
+                    "$tact"
+                ]
+            }
+        ],
+        "keybindings": [
+            {
+                "command": "tact.build",
+                "key": "f5",
+                "when": "editorTextFocus && editorLangId == 'tact'"
+            }
+        ],
+        "menus": {
+            "explorer/context": [
+                {
+                    "when": "resourceExtname == .boc",
+                    "command": "tact.openBocFile",
+                    "group": "navigation"
+                },
+                {
+                    "when": "resourceExtname == '.boc'",
+                    "command": "tact.saveBocDecompiled",
+                    "group": "navigation"
+                }
+            ]
+        },
+        "configuration": [
+            {
+                "title": "General",
+                "properties": {
+                    "tact.stdlib.path": {
+                        "type": "string",
+                        "default": null,
+                        "description": "Path to Tact standard library. If empty, will try to find in node_modules"
+                    }
+                }
+            },
+            {
+                "title": "Toolchain",
+                "properties": {
+                    "tact.toolchain.compilerPath": {
+                        "type": "string",
+                        "default": "",
+                        "description": "Path of Tact compiler executable. If empty, LS will try to use '$PROJECT_ROOT/node_modules/.bin/tact'"
+                    },
+                    "tact.toolchain.showShortCommitInStatusBar": {
+                        "type": "boolean",
+                        "default": false,
+                        "description": "Add short commit hash after Tact version in status bar"
+                    }
+                }
+            },
+            {
+                "title": "Editor › Hints",
+                "properties": {
+                    "tact.hints.types": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Show type hints for variables and expressions"
+                    },
+                    "tact.hints.parameters": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Show parameter name hints in function calls"
+                    },
+                    "tact.hints.showExitCodes": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Show exit codes in require() call"
+                    },
+                    "tact.hints.exitCodeFormat": {
+                        "type": "string",
+                        "enum": [
+                            "decimal",
+                            "hex"
+                        ],
+                        "default": "decimal",
+                        "description": "Format of exit codes in require() calls",
+                        "enumDescriptions": [
+                            "Show exit codes in decimal format (e.g. 1234)",
+                            "Show exit codes in hexadecimal format (e.g. 0x4D2)"
+                        ]
+                    },
+                    "tact.hints.showMethodId": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Show method ID hints for contract functions"
+                    },
+                    "tact.hints.showExplicitTLbIntType": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Show explicit TL-B type hints (as int257) for Int fields"
+                    },
+                    "tact.hints.showToCellSize": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Show size in bits for `toCell()` calls"
+                    }
+                }
+            },
+            {
+                "title": "Editor › Gas Calculation",
+                "properties": {
+                    "tact.gas.loopGasCoefficient": {
+                        "type": "number",
+                        "default": "5",
+                        "description": "The default number of iterations of loops for gas calculation"
+                    }
+                }
+            },
+            {
+                "title": "Editor › Gas Hints",
+                "properties": {
+                    "tact.hints.showGasConsumption": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Show gas consumption hints for asm functions"
+                    },
+                    "tact.hints.showAsmInstructionGas": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Show gas consumption hints for assembly instructions"
+                    },
+                    "tact.hints.showContinuationGas": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Show gas consumption hints for continuation blocks"
+                    },
+                    "tact.hints.gasFormat": {
+                        "type": "string",
+                        "default": ": {gas}",
+                        "description": "Format string for gas consumption hints. Use {gas} as placeholder for the gas value and {stack} for the stack info",
+                        "examples": [
+                            "💨 {gas}",
+                            "Gas: {gas}",
+                            "⛽ {gas}",
+                            "{gas} gas units"
+                        ]
+                    }
+                }
+            },
+            {
+                "title": "Editor › Code Lenses",
+                "properties": {
+                    "tact.codeLens.enabled": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Enable/disable all code lens"
+                    },
+                    "tact.codeLens.showUsages": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Show number of usages for traits, structs, messages, constants and functions"
+                    },
+                    "tact.codeLens.showOverrides": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Show number of overrides for virtual functions"
+                    },
+                    "tact.codeLens.showTraitImplementations": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Show number of implementations for traits"
+                    },
+                    "tact.codeLens.showFunctionImplementations": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Show number of implementations for abstract functions"
+                    },
+                    "tact.codeLens.showParentTraitFields": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Show 'Go to parent' lens for fields inherited from traits"
+                    },
+                    "tact.codeLens.showParentTraitFunctions": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Show 'Go to parent' lens for functions inherited from traits"
+                    }
+                }
+            },
+            {
+                "title": "Editor › Completion",
+                "properties": {
+                    "tact.completion.typeAware": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Sort completion items by relevance to the current context type"
+                    },
+                    "tact.completion.addImports": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Automatically add necessary imports for symbols from other files"
+                    }
+                }
+            },
+            {
+                "title": "Editor › Document",
+                "properties": {
+                    "tact.document.showStructFields": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Show struct fields in document outline"
+                    },
+                    "tact.document.showMessageFields": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Show message fields in document outline"
+                    }
+                }
+            },
+            {
+                "title": "Editor › Inspections",
+                "properties": {
+                    "tact.inspections.disabled": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "enum": [
+                                "tact-compiler-errors",
+                                "unused-parameter",
+                                "empty-block",
+                                "unused-variable",
+                                "struct-initialization",
+                                "unused-contract-members",
+                                "unused-import",
+                                "missed-field-in-contract",
+                                "not-imported-symbol",
+                                "dont-use-text-receivers",
+                                "rewrite",
+                                "dont-use-deployable"
+                            ]
+                        },
+                        "default": [],
+                        "description": "List of disabled code inspections. All inspections are enabled by default."
+                    }
+                }
+            },
+            {
+                "title": "Find Usages",
+                "properties": {
+                    "tact.findUsages.scope": {
+                        "type": "string",
+                        "enum": [
+                            "workspace",
+                            "everywhere"
+                        ],
+                        "enumDescriptions": [
+                            "Search only in workspace files (default)",
+                            "Search everywhere including standard library"
+                        ],
+                        "default": "workspace",
+                        "description": "Where to search when using Find Usages"
+                    }
+                }
+            },
+            {
+                "title": "Fift",
+                "properties": {
+                    "tact.fift.hints.showGasConsumption": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Show gas consumption hints for Fift instructions"
+                    },
+                    "tact.fift.semanticHighlighting.enabled": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Enable/disable semantic highlighting for Fift files"
+                    }
+                }
+            },
+            {
+                "title": "BoC",
+                "properties": {
+                    "tact.boc.openDecompiledOnOpen": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Automatically open decompiled Fift assembly when opening BoC files"
+                    }
+                }
+            },
+            {
+                "title": "Linters",
+                "properties": {
+                    "tact.linters.compiler.enable": {
+                        "type": "boolean",
+                        "default": false,
+                        "description": "Enable Tact compiler analysis"
+                    },
+                    "tact.linters.useProblemMatcher": {
+                        "type": "boolean",
+                        "default": false,
+                        "description": "Highlight errors in editor after build"
+                    },
+                    "tact.linters.misti.enable": {
+                        "type": "boolean",
+                        "default": false,
+                        "description": "Enable Misti static analyzer"
+                    },
+                    "tact.linters.misti.binPath": {
+                        "type": "string",
+                        "default": "npx misti",
+                        "description": "Path to Misti binary/command to run Misti"
+                    }
+                }
+            }
+        ],
+        "jsonValidation": [
+            {
+                "fileMatch": [
+                    "tact.config.json"
+                ],
+                "url": "https://raw.githubusercontent.com/tact-lang/tact/refs/heads/main/src/config/configSchema.json"
+            }
+        ],
+        "customEditors": [
+            {
+                "viewType": "boc.editor",
+                "displayName": "BOC Editor",
+                "selector": [
+                    {
+                        "filenamePattern": "*.boc"
+                    }
+                ],
+                "priority": "default"
+            }
+        ],
+        "taskDefinitions": [
+            {
+                "type": "blueprint-build",
+                "properties": {}
+            },
+            {
+                "type": "blueprint-test",
+                "properties": {}
+            },
+            {
+                "type": "tact-template-build",
+                "properties": {}
+            },
+            {
+                "type": "tact-template-test",
+                "properties": {}
+            }
+        ],
+        "problemMatchers": [
+            {
+                "name": "tact",
+                "owner": "tact",
+                "fileLocation": [
+                    "relative",
+                    "${workspaceFolder}"
+                ],
+                "pattern": [
+                    {
+                        "regexp": "^Error:\\s+(.+):(\\d+):(\\d+):\\s+(.+)$",
+                        "file": 1,
+                        "line": 2,
+                        "column": 3,
+                        "message": 4
+                    }
+                ],
+                "severity": "error"
+            }
+        ]
+    },
+    "dependencies": {
+        "@tact-lang/opcode": "^0.3.0",
+        "@textlint/markdown-to-ast": "^14.4.2",
+        "glob": "^11.0.1",
+        "vscode-languageclient": "^8.0.2",
+        "vscode-languageserver": "^8.0.2",
+        "vscode-languageserver-textdocument": "^1.0.7",
+        "vscode-uri": "^3.0.7",
+        "web-tree-sitter": "^0.25.0"
+    },
+    "devDependencies": {
+        "@scaleton/func-debug-symbols": "^0.1.5",
+        "@types/jest": "^29.5.14",
+        "@types/mocha": "^10.0.6",
+        "@types/node": "^22.2.0",
+        "@types/vscode": "^1.63.0",
+        "@vscode/test-cli": "^0.0.10",
+        "@vscode/test-electron": "^2.4.1",
+        "@vscode/vsce": "^2.15.0",
+        "c8": "^10.1.3",
+        "copy-webpack-plugin": "^12.0.2",
+        "eslint": "^9.19.0",
+        "eslint-plugin-unicorn": "^56.0.1",
+        "eslint-plugin-unused-imports": "^4.1.4",
+        "husky": "^9.1.7",
+        "jest": "^29.7.0",
+        "mocha": "^10.3.0",
+        "prettier": "3.4.2",
+        "tree-sitter-cli": "^0.25.0",
+        "ts-jest": "^29.2.6",
+        "ts-loader": "^9.5.1",
+        "ts-node": "^10.9.2",
+        "tsconfig-paths-webpack-plugin": "^4.2.0",
+        "typescript": "^5.7.0",
+        "typescript-eslint": "^8.22.0",
+        "webpack": "^5.92.1",
+        "webpack-cli": "^5.1.4"
+    },
+    "peerDependencies": {
+        "tree-sitter": "^0.21.1"
+    },
+    "peerDependenciesMeta": {
+        "tree-sitter": {
+            "optional": true
+        }
+    },
+    "dependenciesMeta": {
+        "tree-sitter-cli": {
+            "built": true
+        }
+    },
+    "packageManager": "yarn@4.6.0",
+    "prettier": {
+        "arrowParens": "avoid",
+        "bracketSpacing": false,
+        "printWidth": 100,
+        "semi": false,
+        "singleQuote": false,
+        "tabWidth": 4,
+        "trailingComma": "all",
+        "useTabs": false,
+        "overrides": [
+            {
+                "files": [
+                    "*.yaml",
+                    "*.yml"
+                ],
+                "options": {
+                    "tabWidth": 2
+                }
+            }
+        ]
+    }
+}

@@ -1,0 +1,516 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Language Server - Powerful Tool for Tact Developers</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link
+            href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
+            rel="stylesheet"
+        />
+        <link href="./style.css" rel="stylesheet" />
+    </head>
+    <body>
+        <header class="site-header">
+            <div class="preload" style="display: none">
+                <img src="./public/editor-big.png" alt="preload" />
+                <img src="./public/helix-big.png" alt="preload" />
+                <img src="./public/neovim-big.png" alt="preload" />
+            </div>
+            <div class="container">
+                <a href="#" class="logo">
+                    <svg
+                        width="256"
+                        height="256"
+                        viewBox="0 0 256 256"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                    >
+                        <path
+                            d="M104.73 146.498L28 233L213.909 136.607L147.005 107.71L222 21L41.2276 121.019L104.73 146.498Z"
+                            fill="white"
+                        />
+                        <path
+                            fill-rule="evenodd"
+                            clip-rule="evenodd"
+                            d="M179.397 19.8897H75.603C44.818 19.8897 19.8618 44.881 19.8618 75.7093V180.291C19.8618 211.119 44.818 236.11 75.603 236.11H179.397C210.182 236.11 235.138 211.119 235.138 180.291V75.7093C235.138 44.881 210.182 19.8897 179.397 19.8897ZM75.603 0C33.8486 0 0 33.8962 0 75.7093V180.291C0 222.104 33.8486 256 75.603 256H179.397C221.151 256 255 222.104 255 180.291V75.7093C255 33.8962 221.151 0 179.397 0H75.603Z"
+                            fill="white"
+                        />
+                    </svg>
+                    <span>Tact Language Server</span>
+                </a>
+                <nav class="site-nav">
+                    <a href="#features">Features</a>
+                    <a href="#docs">Documentation</a>
+                    <a href="#community">Community</a>
+                </nav>
+            </div>
+        </header>
+
+        <section class="hero-section">
+            <canvas id="gradient-background"></canvas>
+            <div class="container">
+                <div class="hero">
+                    <div class="hero-content">
+                        <h1 class="hero-title">
+                            <span>
+                                <span class="tact-logo-name">
+                                    <svg
+                                        width="256"
+                                        height="256"
+                                        viewBox="0 0 256 256"
+                                        fill="none"
+                                        xmlns="http://www.w3.org/2000/svg"
+                                    >
+                                        <path
+                                            d="M104.73 146.498L28 233L213.909 136.607L147.005 107.71L222 21L41.2276 121.019L104.73 146.498Z"
+                                            fill="white"
+                                        />
+                                        <path
+                                            fill-rule="evenodd"
+                                            clip-rule="evenodd"
+                                            d="M179.397 19.8897H75.603C44.818 19.8897 19.8618 44.881 19.8618 75.7093V180.291C19.8618 211.119 44.818 236.11 75.603 236.11H179.397C210.182 236.11 235.138 211.119 235.138 180.291V75.7093C235.138 44.881 210.182 19.8897 179.397 19.8897ZM75.603 0C33.8486 0 0 33.8962 0 75.7093V180.291C0 222.104 33.8486 256 75.603 256H179.397C221.151 256 255 222.104 255 180.291V75.7093C255 33.8962 221.151 0 179.397 0H75.603Z"
+                                            fill="white"
+                                        />
+                                    </svg>
+                                    <span>Tact</span>
+                                </span>
+                                <span class="language-server-caption">Language Server</span>
+                            </span>
+                        </h1>
+                        <a href="https://tonstudio.io" class="studio-link">by Ton Studio</a>
+                        <p class="hero-description">
+                            Advanced development environment for Tact programming language, designed
+                            to streamline smart contract development on TON blockchain
+                        </p>
+                        <a href="#" class="cta-button">Get started</a>
+                    </div>
+                    <div class="hero-image">
+                        <img src="./public/editor-big.png" alt="Code Editor Interface" />
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <main class="container">
+            <section class="features-section">
+                <h2>Key Features</h2>
+                <div class="features">
+                    <div class="feature">
+                        <div class="feature-content">
+                            <h3>Smart Code Completion</h3>
+                            <p>
+                                Intelligent code suggestions as you type. Get context-aware
+                                completions for variables, functions, and types. Smart snippets help
+                                you write common code patterns faster, while inline documentation
+                                keeps you informed.
+                            </p>
+                        </div>
+                        <div class="feature-image">
+                            <img src="./public/completion.png" alt="Code Completion" />
+                            <div class="image-nav">
+                                <span>1 / 3</span>
+                                <div class="image-nav-buttons">
+                                    <button class="image-nav-button" disabled>←</button>
+                                    <button class="image-nav-button">→</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="feature">
+                        <div class="feature-content">
+                            <h3>Quick Navigation</h3>
+                            <p>
+                                Navigate through your codebase with precision. Jump instantly to
+                                definitions and find all usages across the project. Explore
+                                workspace symbols for quick access to any declaration, and use the
+                                file symbols tree to understand code structure at a glance.
+                            </p>
+                        </div>
+                        <div class="feature-image">
+                            <img src="./public/find-usages.png" alt="Code Navigation" />
+                            <div class="image-nav">
+                                <span>1 / 3</span>
+                                <div class="image-nav-buttons">
+                                    <button class="image-nav-button" disabled>←</button>
+                                    <button class="image-nav-button">→</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="feature">
+                        <div class="feature-content">
+                            <h3>Smart Documentation</h3>
+                            <p>
+                                Instant access to documentation for any symbol — types, functions,
+                                contracts, and more. Documentation is displayed when you hover over
+                                code elements.
+                            </p>
+                        </div>
+                        <div class="feature-image">
+                            <img src="./public/documentation.png" alt="Hover Documentation" />
+                            <div class="image-nav">
+                                <span>1 / 1</span>
+                                <div class="image-nav-buttons">
+                                    <button class="image-nav-button" disabled>←</button>
+                                    <button class="image-nav-button">→</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="feature">
+                        <div class="feature-content">
+                            <h3>Real-time Code Analysis</h3>
+                            <p>
+                                While you write, LS runs a set of checks and gives instant feedback
+                                if any errors are found, allowing you to quickly fix the code and
+                                continue development.
+                            </p>
+                        </div>
+                        <div class="feature-image">
+                            <img src="./public/inspection.png" alt="Code Analysis" />
+                            <div class="image-nav">
+                                <span>1 / 1</span>
+                                <div class="image-nav-buttons">
+                                    <button class="image-nav-button" disabled>←</button>
+                                    <button class="image-nav-button">→</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="feature">
+                        <div class="feature-content">
+                            <h3>Signature Help</h3>
+                            <p>
+                                Get real-time information about function parameters as you type. See
+                                parameter types, names, and documentation without leaving your
+                                current context. Supports method calls, constructors, and native
+                                functions.
+                            </p>
+                        </div>
+                        <div class="feature-image">
+                            <img src="./public/signature-help.png" alt="Signature Help" />
+                            <div class="image-nav">
+                                <span>1 / 1</span>
+                                <div class="image-nav-buttons">
+                                    <button class="image-nav-button" disabled>←</button>
+                                    <button class="image-nav-button">→</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="feature">
+                        <div class="feature-content">
+                            <h3>Smart Folding</h3>
+                            <p>
+                                Intelligent code folding that understands Tact's structure. Collapse
+                                contracts, functions, and code blocks to focus on what matters.
+                                Custom folding regions help organize large files.
+                            </p>
+                        </div>
+                        <div class="feature-image">
+                            <img src="./public/foldings.png" alt="Code Folding" />
+                            <div class="image-nav">
+                                <span>1 / 1</span>
+                                <div class="image-nav-buttons">
+                                    <button class="image-nav-button" disabled>←</button>
+                                    <button class="image-nav-button">→</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="feature">
+                        <div class="feature-content">
+                            <h3>Semantic Highlighting</h3>
+                            <p>
+                                Advanced syntax highlighting that understands code semantics.
+                                Different colors for variables, functions, types, and more.
+                                Distinguishes between mutable and immutable variables, highlights
+                                unused code.
+                            </p>
+                        </div>
+                        <div class="feature-image">
+                            <img src="./public/semantic-tokens.png" alt="Semantic Highlighting" />
+                            <div class="image-nav">
+                                <span>1 / 1</span>
+                                <div class="image-nav-buttons">
+                                    <button class="image-nav-button" disabled>←</button>
+                                    <button class="image-nav-button">→</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="feature">
+                        <div class="feature-content">
+                            <h3>Code Lens</h3>
+                            <p>
+                                Inline actionable information about your code. See references count,
+                                inheritance chain, implementation details. Quick access to related
+                                code and documentation.
+                            </p>
+                        </div>
+                        <div class="feature-image">
+                            <img src="./public/default-image.png" alt="Code Lens" />
+                            <div class="image-nav">
+                                <span>1 / 1</span>
+                                <div class="image-nav-buttons">
+                                    <button class="image-nav-button" disabled>←</button>
+                                    <button class="image-nav-button">→</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="updates-section">
+                <h2>Latest Updates</h2>
+                <div class="updates-grid">
+                    <div class="update-card">
+                        <div class="update-date">December 15, 2023</div>
+                        <div class="update-title">Enhanced Type Inference</div>
+                        <p class="update-description">
+                            Improved type inference system for better code completion and error
+                            detection. Now supports complex generic types and type aliases.
+                        </p>
+                    </div>
+
+                    <div class="update-card">
+                        <div class="update-date">December 1, 2023</div>
+                        <div class="update-title">New Refactoring Tools</div>
+                        <p class="update-description">
+                            Added new refactoring capabilities including extract method, inline
+                            variable, and smart contract optimization suggestions.
+                        </p>
+                    </div>
+
+                    <div class="update-card">
+                        <div class="update-date">November 20, 2023</div>
+                        <div class="update-title">Performance Improvements</div>
+                        <p class="update-description">
+                            Major performance optimizations for large projects. Reduced memory usage
+                            and faster code analysis for complex smart contracts.
+                        </p>
+                    </div>
+                </div>
+            </section>
+
+            <section class="testimonials">
+                <h2>What Developers Say</h2>
+                <div class="testimonials-grid">
+                    <div class="testimonial">
+                        <p>
+                            "Language Server significantly accelerated our development. Code
+                            completion and navigation work flawlessly."
+                        </p>
+                        <cite>- Lead Developer</cite>
+                    </div>
+                    <div class="testimonial">
+                        <p>
+                            "Well, looks like they won't fire me after all. This Language Server
+                            actually works (well, mostly...)!"
+                        </p>
+                        <cite>- The Author</cite>
+                    </div>
+                </div>
+            </section>
+
+            <section class="faq-section">
+                <h2>Frequently Asked Questions</h2>
+                <div class="faq-list">
+                    <div class="faq-item">
+                        <div class="faq-question">
+                            How to get started with Tact Language Server?
+                            <span class="toggle">+</span>
+                        </div>
+                        <div class="faq-answer">
+                            <p>
+                                Install the Tact Language Server extension in your preferred IDE
+                                (VSCode, WebStorm, etc.), open a Tact project, and you're ready to
+                                go. The server will automatically start providing smart completions
+                                and other features.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="faq-item">
+                        <div class="faq-question">
+                            Which IDEs are supported?
+                            <span class="toggle">+</span>
+                        </div>
+                        <div class="faq-answer">
+                            <p>
+                                Tact Language Server works with any editor that supports the
+                                Language Server Protocol (LSP). This includes VS Code, Sublime Text,
+                                Atom, and many others.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="faq-item">
+                        <div class="faq-question">
+                            How to report issues or request features?
+                            <span class="toggle">+</span>
+                        </div>
+                        <div class="faq-answer">
+                            <p>
+                                You can report issues and request features on our
+                                <a href="https://github.com/tact-lang/tact-language-server/issues">
+                                    GitHub repository</a
+                                >. For quick questions and community support, join
+                                <a href="https://t.me/tactlang"> Tact Telegram channel </a>.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="faq-item">
+                        <div class="faq-question">
+                            Is Tact Language Server free to use?
+                            <span class="toggle">+</span>
+                        </div>
+                        <div class="faq-answer">
+                            <p>
+                                Yes, Tact Language Server is completely free and open source. You
+                                can use it for both personal and commercial projects without any
+                                limitations.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer class="site-footer">
+            <div class="container">
+                <div class="footer-content">
+                    <div class="footer-links">
+                        <a href="https://ton.org">TON</a>
+                        <a href="https://docs.tact-lang.org">Documentation</a>
+                        <a href="https://github.com/tact-lang">GitHub</a>
+                        <a href="https://t.me/tactlang">Telegram</a>
+                    </div>
+                    <div class="footer-copyright">© 2025 TON Studio</div>
+                </div>
+            </div>
+        </footer>
+
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/controls/OrbitControls.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/loaders/OBJLoader.js"></script>
+        <script>
+            const featureImages = {
+                completion: [
+                    "./public/completion.png",
+                    "./public/completion-2.png",
+                    "./public/completion-3.png",
+                ],
+                navigation: [
+                    "./public/find-usages.png",
+                    "./public/find-symbol.png",
+                    "./public/symbol-tree.png",
+                ],
+                documentation: ["./public/documentation.png"],
+                inspections: ["./public/inspection.png"],
+                codeAnalysis: ["./public/inspection.png"],
+                signature: ["./public/signature-help.png"],
+                folding: ["./public/foldings.png"],
+                semantic: ["./public/semantic-tokens.png"],
+                codelens: ["./public/default-image.png"],
+            }
+
+            document.querySelectorAll(".feature").forEach((feature, featureIndex) => {
+                const img = feature.querySelector("img")
+                const counter = feature.querySelector(".image-nav span")
+                const prevBtn = feature.querySelector(".image-nav-button:first-child")
+                const nextBtn = feature.querySelector(".image-nav-button:last-child")
+
+                const featureType = [
+                    "completion",
+                    "navigation",
+                    "documentation",
+                    "inspections",
+                    "signature",
+                    "folding",
+                    "semantic",
+                    "codelens",
+                ][featureIndex]
+                feature.dataset.featureType = featureType
+                const images = featureImages[featureType]
+                let currentIndex = 0
+
+                const updateNavigation = () => {
+                    counter.textContent = `${currentIndex + 1} / ${images.length}`
+                    prevBtn.disabled = currentIndex === 0
+                    nextBtn.disabled = currentIndex === images.length - 1
+                }
+
+                prevBtn.addEventListener("click", () => {
+                    if (currentIndex > 0) {
+                        currentIndex--
+                        img.src = images[currentIndex]
+                        updateNavigation()
+                    }
+                })
+
+                nextBtn.addEventListener("click", () => {
+                    if (currentIndex < images.length - 1) {
+                        currentIndex++
+                        img.src = images[currentIndex]
+                        updateNavigation()
+                    }
+                })
+
+                updateNavigation()
+            })
+
+            document.querySelectorAll(".faq-question").forEach(question => {
+                question.addEventListener("click", () => {
+                    const item = question.parentElement
+                    const isActive = item.classList.contains("active")
+
+                    document.querySelectorAll(".faq-item").forEach(item => {
+                        item.classList.remove("active")
+                        item.querySelector(".toggle").textContent = "+"
+                    })
+
+                    if (!isActive) {
+                        item.classList.add("active")
+                        question.querySelector(".toggle").textContent = "−"
+                    }
+                })
+            })
+
+            const heroImage = document.querySelector(".hero-image img")
+            const images = [
+                "./public/editor-big.png",
+                "./public/helix-big.png",
+                "./public/neovim-big.png",
+            ]
+            let currentImageIndex = 0
+
+            window.addEventListener("scroll", () => {
+                const scrollPosition = window.scrollY
+                const section = Math.floor(scrollPosition / 30)
+
+                if (section !== currentImageIndex && section < images.length && section > 0) {
+                    heroImage.classList.add("fade")
+                    setTimeout(() => {
+                        currentImageIndex = section
+                        heroImage.src = images[currentImageIndex]
+                        heroImage.classList.remove("fade")
+                    }, 300)
+                }
+            })
+        </script>
+        <script src="3d.js"></script>
+    </body>
+</html>

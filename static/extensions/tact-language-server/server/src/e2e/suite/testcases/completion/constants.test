@@ -1,0 +1,79 @@
+========================================================================
+Global constant completion
+========================================================================
+primitive Int;
+
+const FOO: Int = 100;
+const BAR: Int = 100;
+
+fun test() {
+    <caret>
+}
+------------------------------------------------------------------------
+13 false
+13 null
+13 return;
+13 true
+2  test()
+13 codeOf Contract   Cell
+13 initOf Contract(params)   StateInit
+20 BAR: Int = 100
+20 FOO: Int = 100
+14 do
+14 foreach
+14 if
+14 ife
+14 let
+14 lett
+14 repeat
+14 try
+14 try-catch
+14 until
+14 while
+
+========================================================================
+Contract constant completion
+========================================================================
+primitive Int;
+
+contract Foo {
+    const<caret>
+}
+------------------------------------------------------------------------
+13 bounced(msg: <type>) {}
+13 const Foo: <type> = <value>
+13 external(msg: <type>) {}
+13 external("<message>") {}
+13 external() {}
+13 fun name() {}
+13 get fun name() {}
+13 init() {}
+13 inline fun name() {}
+13 receive(msg: <type>) {}
+13 receive("<message>") {}
+13 receive() {}
+13 state  generate getter for all contract state
+
+========================================================================
+Trait constant completion
+========================================================================
+primitive Int;
+
+trait Foo {
+    const<caret>
+}
+------------------------------------------------------------------------
+13 abstract fun name();
+13 bounced(msg: <type>) {}
+13 const Foo: <type> = <value>
+13 external(msg: <type>) {}
+13 external("<message>") {}
+13 external() {}
+13 fun name() {}
+13 get fun name() {}
+13 init() {}
+13 inline fun name() {}
+13 receive(msg: <type>) {}
+13 receive("<message>") {}
+13 receive() {}
+13 virtual fun name() {}

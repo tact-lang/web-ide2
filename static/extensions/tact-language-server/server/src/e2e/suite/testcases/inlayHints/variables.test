@@ -1,0 +1,71 @@
+========================================================================
+Local variable
+========================================================================
+primitive Int;
+
+fun foo() {
+    let a = 10;
+}
+------------------------------------------------------------------------
+primitive Int;
+
+fun foo() {
+    let a/* : Int */ = 10;
+}
+
+========================================================================
+Foreach variables
+========================================================================
+primitive Int;
+primitive String;
+
+fun foo() {
+    let a: map<Int, String> = emptyMap();
+    foreach (key, value in a) {}
+}
+------------------------------------------------------------------------
+primitive Int;
+primitive String;
+
+fun foo() {
+    let a: map<Int, String> = emptyMap();
+    foreach (key/* : Int */, value/* : String */ in a) {}
+}
+
+========================================================================
+Local variable initialized with struct init
+========================================================================
+primitive Int;
+
+struct Foo { value: Int }
+
+fun foo() {
+    let a = Foo { value: 10 };
+}
+------------------------------------------------------------------------
+primitive Int;
+
+struct Foo { value: Int/*  as int257 */ }
+
+fun foo() {
+    let a = Foo { value: 10 };
+}
+
+========================================================================
+Local variable initialized with fromCell call
+========================================================================
+primitive Int;
+
+struct Foo { value: Int }
+
+fun foo() {
+    let a = Foo.fromCell(emptyCell());
+}
+------------------------------------------------------------------------
+primitive Int;
+
+struct Foo { value: Int/*  as int257 */ }
+
+fun foo() {
+    let a = Foo.fromCell(emptyCell());
+}

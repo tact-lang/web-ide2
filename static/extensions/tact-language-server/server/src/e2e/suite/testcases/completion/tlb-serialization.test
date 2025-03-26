@@ -1,0 +1,143 @@
+========================================================================
+TL-B serialization types completion
+========================================================================
+primitive Int;
+
+message Transfer {
+    amount: Int as <caret>;
+}
+------------------------------------------------------------------------
+13 coins
+13 int128
+13 int16
+13 int256
+13 int257
+13 int32
+13 int64
+13 int8
+13 int{X}
+13 uint128
+13 uint16
+13 uint256
+13 uint32
+13 uint64
+13 uint8
+13 uint{X}
+
+========================================================================
+TL-B serialization types for non Int completion
+========================================================================
+primitive Address;
+
+struct Transfer {
+    owner: Address as <caret>;
+}
+------------------------------------------------------------------------
+No completion items
+
+========================================================================
+TL-B serialization types for Slice completion
+========================================================================
+primitive Slice;
+
+struct Transfer {
+    value: Slice as <caret>;
+}
+------------------------------------------------------------------------
+13 remaining
+
+========================================================================
+TL-B serialization types for Cell completion
+========================================================================
+primitive Cell;
+
+struct Transfer {
+    value: Cell as <caret>;
+}
+------------------------------------------------------------------------
+13 remaining
+
+========================================================================
+TL-B serialization types for Builder completion
+========================================================================
+primitive Builder;
+
+struct Transfer {
+    value: Builder as <caret>;
+}
+------------------------------------------------------------------------
+13 remaining
+
+========================================================================
+TL-B serialization as
+========================================================================
+primitive Builder;
+
+struct Transfer {
+    value: Builder <caret>;
+}
+------------------------------------------------------------------------
+No completion items
+
+========================================================================
+TL-B serialization as 2
+========================================================================
+primitive Builder;
+
+struct Transfer {
+    value: Builder <caret>
+}
+------------------------------------------------------------------------
+No completion items
+
+========================================================================
+TL-B serialization as 3
+========================================================================
+primitive Builder;
+
+contract Transfer {
+    value: Builder <caret>
+}
+------------------------------------------------------------------------
+13 bounced(msg: <type>) {}
+13 const Foo: <type> = <value>
+13 external(msg: <type>) {}
+13 external("<message>") {}
+13 external() {}
+13 fun name() {}
+13 get fun name() {}
+13 init() {}
+13 inline fun name() {}
+13 receive(msg: <type>) {}
+13 receive("<message>") {}
+13 receive() {}
+13 state  generate getter for all contract state
+13 value  generate getter for "value" field
+
+========================================================================
+TL-B serialization for field type
+========================================================================
+primitive Int;
+
+message Transfer {
+    amount: <caret>;
+}
+------------------------------------------------------------------------
+13 Coins
+13 Int128
+13 Int16
+13 Int256
+13 Int257
+13 Int32
+13 Int64
+13 Int8
+13 Uint128
+13 Uint16
+13 Uint256
+13 Uint32
+13 Uint64
+13 Uint8
+13 map<K, V>
+9  Int
+21 Transfer
+24 WithSeveralDeclaration

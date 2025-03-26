@@ -1,0 +1,244 @@
+========================================================================
+Completion of override methods in trait
+========================================================================
+trait Parent {
+    fun foo(): Int {}
+}
+
+trait Child with Parent {
+    <caret>
+}
+------------------------------------------------------------------------
+13 abstract fun name();
+13 bounced(msg: <type>) {}
+13 const Foo: <type> = <value>
+13 external(msg: <type>) {}
+13 external("<message>") {}
+13 external() {}
+13 fun name() {}
+13 get fun name() {}
+13 init() {}
+13 inline fun name() {}
+2  override fun foo(): Int {} of Parent
+13 receive(msg: <type>) {}
+13 receive("<message>") {}
+13 receive() {}
+13 virtual fun name() {}
+
+========================================================================
+Completion of override methods in trait with deep inheritance
+========================================================================
+trait Grand {
+    fun bar(name: String): Bool {}
+}
+
+trait Parent with Grand {
+    fun foo(): Int {}
+}
+
+trait Child with Parent {
+    <caret>
+}
+------------------------------------------------------------------------
+13 abstract fun name();
+13 bounced(msg: <type>) {}
+13 const Foo: <type> = <value>
+13 external(msg: <type>) {}
+13 external("<message>") {}
+13 external() {}
+13 fun name() {}
+13 get fun name() {}
+13 init() {}
+13 inline fun name() {}
+2  override fun foo(): Int {} of Parent
+2  override fun bar(name: String): Bool {} of Grand
+13 receive(msg: <type>) {}
+13 receive("<message>") {}
+13 receive() {}
+13 virtual fun name() {}
+
+========================================================================
+Completion of override methods in trait with method
+========================================================================
+trait Parent {
+    fun foo(): Int {}
+    fun bar(): Int {}
+}
+
+trait Child with Parent {
+    override fun foo(): Int {}
+    <caret>
+}
+------------------------------------------------------------------------
+13 abstract fun name();
+13 bounced(msg: <type>) {}
+13 const Foo: <type> = <value>
+13 external(msg: <type>) {}
+13 external("<message>") {}
+13 external() {}
+13 fun name() {}
+13 get fun name() {}
+13 init() {}
+13 inline fun name() {}
+2  override fun bar(): Int {} of Parent
+13 receive(msg: <type>) {}
+13 receive("<message>") {}
+13 receive() {}
+13 virtual fun name() {}
+
+========================================================================
+Completion of fields in trait
+========================================================================
+primitive String;
+
+trait Parent {
+    name: String;
+}
+
+trait Child with Parent {
+    <caret>
+}
+------------------------------------------------------------------------
+9  name: String; of Parent
+13 abstract fun name();
+13 bounced(msg: <type>) {}
+13 const Foo: <type> = <value>
+13 external(msg: <type>) {}
+13 external("<message>") {}
+13 external() {}
+13 fun name() {}
+13 get fun name() {}
+13 init() {}
+13 inline fun name() {}
+13 receive(msg: <type>) {}
+13 receive("<message>") {}
+13 receive() {}
+13 virtual fun name() {}
+13 name  generate getter for "name" field
+
+========================================================================
+Completion of fields in trait with deep inheritance
+========================================================================
+primitive String;
+primitive Int;
+
+trait Grand {
+    age: Int;
+}
+
+trait Parent with Grand {
+    name: String;
+}
+
+trait Child with Parent {
+    <caret>
+}
+------------------------------------------------------------------------
+9  age: Int; of Grand
+9  name: String; of Parent
+13 abstract fun name();
+13 bounced(msg: <type>) {}
+13 const Foo: <type> = <value>
+13 external(msg: <type>) {}
+13 external("<message>") {}
+13 external() {}
+13 fun name() {}
+13 get fun name() {}
+13 init() {}
+13 inline fun name() {}
+13 receive(msg: <type>) {}
+13 receive("<message>") {}
+13 receive() {}
+13 virtual fun name() {}
+13 age  generate getter for "age" field
+13 name  generate getter for "name" field
+
+========================================================================
+Completion of fields in trait with field
+========================================================================
+primitive String;
+primitive Int;
+
+trait Parent {
+    age: Int;
+    name: String;
+}
+
+trait Child with Parent {
+    name: String;
+    <caret>
+}
+------------------------------------------------------------------------
+9  age: Int; of Parent
+13 abstract fun name();
+13 bounced(msg: <type>) {}
+13 const Foo: <type> = <value>
+13 external(msg: <type>) {}
+13 external("<message>") {}
+13 external() {}
+13 fun name() {}
+13 get fun name() {}
+13 init() {}
+13 inline fun name() {}
+13 receive(msg: <type>) {}
+13 receive("<message>") {}
+13 receive() {}
+13 virtual fun name() {}
+13 age  generate getter for "age" field
+13 name  generate getter for "name" field
+13 name  generate getter for "name" field
+
+========================================================================
+Completion of methods and fields without self
+========================================================================
+primitive Int;
+
+trait Child with Parent {
+    field: Int;
+
+    fun foo(): Int {}
+
+    fun bar(): Int {
+        <caret>
+    }
+}
+------------------------------------------------------------------------
+9  self.field: Int   of Child
+13 false
+13 null
+13 return <expr>;
+13 true
+2  self.bar(): Int
+2  self.foo(): Int
+13 codeOf Contract   Cell
+13 initOf Contract(params)   StateInit
+13 self
+14 return 0;
+14 do
+14 foreach
+14 if
+14 ife
+14 let
+14 lett
+14 repeat
+14 try
+14 try-catch
+14 until
+14 while
+
+========================================================================
+Completion of traits to override
+========================================================================
+primitive Int;
+
+trait A1 {}
+trait A2 {}
+trait A3 {}
+
+trait Child with <caret> {}
+------------------------------------------------------------------------
+24 A1
+24 A2
+24 A3
+24 Child
+24 WithSeveralDeclaration

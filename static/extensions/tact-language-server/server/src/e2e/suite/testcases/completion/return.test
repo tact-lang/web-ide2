@@ -1,0 +1,142 @@
+========================================================================
+Return inside void function
+========================================================================
+fun test() {
+    ret<caret>
+}
+------------------------------------------------------------------------
+13 false
+13 null
+13 return;
+13 true
+2  test()
+13 codeOf Contract   Cell
+13 initOf Contract(params)   StateInit
+14 do
+14 foreach
+14 if
+14 ife
+14 let
+14 lett
+14 repeat
+14 try
+14 try-catch
+14 until
+14 while
+
+========================================================================
+Return inside bool function
+========================================================================
+primitive Bool;
+
+fun test(): Bool {
+    ret<caret>
+}
+------------------------------------------------------------------------
+13 false
+13 null
+13 return <expr>;
+13 true
+2  test(): Bool
+13 codeOf Contract   Cell
+13 initOf Contract(params)   StateInit
+14 return false;
+14 return true;
+14 do
+14 foreach
+14 if
+14 ife
+14 let
+14 lett
+14 repeat
+14 try
+14 try-catch
+14 until
+14 while
+
+========================================================================
+Return inside int function
+========================================================================
+primitive Int;
+
+fun test(): Int {
+    ret<caret>
+}
+------------------------------------------------------------------------
+13 false
+13 null
+13 return <expr>;
+13 true
+2  test(): Int
+13 codeOf Contract   Cell
+13 initOf Contract(params)   StateInit
+14 return 0;
+14 do
+14 foreach
+14 if
+14 ife
+14 let
+14 lett
+14 repeat
+14 try
+14 try-catch
+14 until
+14 while
+
+========================================================================
+Return inside string function
+========================================================================
+primitive String;
+
+fun test(): String {
+    ret<caret>
+}
+------------------------------------------------------------------------
+13 false
+13 null
+13 return <expr>;
+13 true
+2  test(): String
+13 codeOf Contract   Cell
+13 initOf Contract(params)   StateInit
+14 return "";
+14 do
+14 foreach
+14 if
+14 ife
+14 let
+14 lett
+14 repeat
+14 try
+14 try-catch
+14 until
+14 while
+
+========================================================================
+Return inside option function
+========================================================================
+primitive String;
+
+fun test(): String? {
+    ret<caret>
+}
+------------------------------------------------------------------------
+13 false
+13 null
+13 return <expr>;
+13 true
+2  test(): String?
+13 codeOf Contract   Cell
+13 initOf Contract(params)   StateInit
+14 return null;
+14 do
+14 foreach
+14 if
+14 ife
+14 let
+14 lett
+14 repeat
+14 try
+14 try-catch
+14 until
+14 while

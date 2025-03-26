@@ -1,0 +1,236 @@
+========================================================================
+Global function completion
+========================================================================
+primitive Int;
+
+fun add(a: Int, b: Int): Int {
+    return a + b;
+}
+
+fun multiply(x: Int, y: Int): Int {
+    return x * y;
+}
+
+fun test() {
+    <caret>
+}
+------------------------------------------------------------------------
+13 false
+13 null
+13 return;
+13 true
+2  add(a: Int, b: Int): Int
+2  multiply(x: Int, y: Int): Int
+2  test()
+13 codeOf Contract   Cell
+13 initOf Contract(params)   StateInit
+14 do
+14 foreach
+14 if
+14 ife
+14 let
+14 lett
+14 repeat
+14 try
+14 try-catch
+14 until
+14 while
+
+========================================================================
+Fun completion with parameters
+========================================================================
+primitive Int;
+
+fun add(a: Int, b: Int): Int {
+    return a + b;
+}
+
+fun test() {
+    let result = <caret>
+}
+------------------------------------------------------------------------
+13 false
+13 null
+13 true
+13 codeOf Contract   Cell
+13 initOf Contract(params)   StateInit
+2  add(a: Int, b: Int): Int
+2  test()
+
+========================================================================
+Extends function completion
+========================================================================
+primitive Int;
+
+extends fun increment(self: Int): Int {
+    return self + 1;
+}
+
+extends fun double(self: Int): Int {
+    return self * 2;
+}
+
+fun test() {
+    let num: Int = 1;
+    num.<caret>
+}
+------------------------------------------------------------------------
+2  double(self: Int): Int
+2  increment(self: Int): Int
+14 call  Use as function argument
+14 do  Create do-until loop
+14 if  Create if statement
+14 let  Create variable
+14 not  Negate expression
+14 repeat  Create repeat loop
+
+========================================================================
+Fun completion in expression
+========================================================================
+primitive Int;
+
+fun add(a: Int, b: Int): Int {
+    return a + b;
+}
+
+fun test() {
+    let x = add(<caret>)
+}
+------------------------------------------------------------------------
+13 false
+13 null
+13 true
+13 codeOf Contract   Cell
+13 initOf Contract(params)   StateInit
+2  add(a: Int, b: Int): Int
+2  test()
+
+========================================================================
+Native function completion
+========================================================================
+primitive Int;
+
+@name("op_add")
+native add(a: Int, b: Int): Int;
+
+@name("op_mul")
+native multiply(x: Int, y: Int): Int;
+
+fun test() {
+    <caret>
+}
+------------------------------------------------------------------------
+13 false
+13 null
+13 return;
+13 true
+2  add(a: Int, b: Int): Int
+2  multiply(x: Int, y: Int): Int
+2  test()
+13 codeOf Contract   Cell
+13 initOf Contract(params)   StateInit
+14 do
+14 foreach
+14 if
+14 ife
+14 let
+14 lett
+14 repeat
+14 try
+14 try-catch
+14 until
+14 while
+
+========================================================================
+No extends function in unqualified completion
+========================================================================
+primitive Int;
+
+extends fun increment(self: Int): Int {
+    return self + 1;
+}
+
+extends fun double(self: Int): Int {
+    return self * 2;
+}
+
+fun foo() {}
+
+fun test() {
+    <caret>
+}
+------------------------------------------------------------------------
+13 false
+13 null
+13 return;
+13 true
+2  foo()
+2  test()
+13 codeOf Contract   Cell
+13 initOf Contract(params)   StateInit
+14 do
+14 foreach
+14 if
+14 ife
+14 let
+14 lett
+14 repeat
+14 try
+14 try-catch
+14 until
+14 while
+
+========================================================================
+Completion in function name
+========================================================================
+primitive Int;
+
+fun <caret>(a: Int, b: Int): Int {
+    return a + b;
+}
+------------------------------------------------------------------------
+No completion items
+
+========================================================================
+Completion in function name 2
+========================================================================
+primitive Int;
+
+trait Foo {
+    fun <caret>(a: Int, b: Int): Int {
+        return a + b;
+    }
+}
+------------------------------------------------------------------------
+No completion items
+
+========================================================================
+Completion in function name 3
+========================================================================
+primitive Int;
+
+contract Foo {
+    fun <caret>(a: Int, b: Int): Int {
+        return a + b;
+    }
+}
+------------------------------------------------------------------------
+No completion items
+
+========================================================================
+Completion of function return type
+========================================================================
+primitive Int;
+
+struct Bar {}
+struct Baz {}
+
+fun multiply(x: Int, y: Int): <caret> {
+    return x * y;
+}
+------------------------------------------------------------------------
+13 map<K, V>
+9  Int
+21 Bar
+21 Baz
+24 WithSeveralDeclaration

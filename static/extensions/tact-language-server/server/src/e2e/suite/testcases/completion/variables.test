@@ -1,0 +1,560 @@
+========================================================================
+Local variable completion
+========================================================================
+primitive Int;
+primitive Address;
+primitive String;
+
+fun test() {
+    let myInt: Int = 0;
+    let myAddress: Address = address("0");
+    let myString: String = "hello";
+
+    <caret>
+}
+------------------------------------------------------------------------
+5  myAddress   Address
+5  myInt   Int
+5  myString   String
+13 false
+13 null
+13 return;
+13 true
+2  test()
+13 codeOf Contract   Cell
+13 initOf Contract(params)   StateInit
+14 do
+14 foreach
+14 if
+14 ife
+14 let
+14 lett
+14 repeat
+14 try
+14 try-catch
+14 until
+14 while
+
+========================================================================
+Fun parameter completion
+========================================================================
+primitive Int;
+primitive Address;
+
+fun test(amount: Int, to: Address) {
+    <caret>
+}
+------------------------------------------------------------------------
+5  amount   Int
+5  to   Address
+13 false
+13 null
+13 return;
+13 true
+2  test(amount: Int, to: Address)
+13 codeOf Contract   Cell
+13 initOf Contract(params)   StateInit
+14 do
+14 foreach
+14 if
+14 ife
+14 let
+14 lett
+14 repeat
+14 try
+14 try-catch
+14 until
+14 while
+
+========================================================================
+Extends function parameter completion
+========================================================================
+primitive Int;
+struct Point {}
+
+extends fun move(self: Point, x: Int, y: Int) {
+    <caret>
+}
+------------------------------------------------------------------------
+5  self   Point
+5  x   Int
+5  y   Int
+13 false
+13 null
+13 return;
+13 true
+2  move(self: Point, x: Int, y: Int)
+13 codeOf Contract   Cell
+13 initOf Contract(params)   StateInit
+21 Point{}
+14 do
+14 foreach
+14 if
+14 ife
+14 let
+14 lett
+14 repeat
+14 try
+14 try-catch
+14 until
+14 while
+
+========================================================================
+Extends function with local variables
+========================================================================
+primitive Int;
+struct Point {}
+
+extends fun scale(self: Point, factor: Int) {
+    let temp = factor * 2;
+    <caret>
+}
+------------------------------------------------------------------------
+5  temp   Int
+5  factor   Int
+5  self   Point
+13 false
+13 null
+13 return;
+13 true
+2  scale(self: Point, factor: Int)
+13 codeOf Contract   Cell
+13 initOf Contract(params)   StateInit
+21 Point{}
+14 do
+14 foreach
+14 if
+14 ife
+14 let
+14 lett
+14 repeat
+14 try
+14 try-catch
+14 until
+14 while
+
+========================================================================
+Nested scope completion
+========================================================================
+primitive Int;
+
+fun test() {
+    let outer: Int = 1;
+
+    if (true) {
+        let inner: Int = 2;
+        <caret>
+    }
+}
+------------------------------------------------------------------------
+5  inner   Int
+5  outer   Int
+13 false
+13 null
+13 return;
+13 true
+2  test()
+13 codeOf Contract   Cell
+13 initOf Contract(params)   StateInit
+14 do
+14 foreach
+14 if
+14 ife
+14 let
+14 lett
+14 repeat
+14 try
+14 try-catch
+14 until
+14 while
+
+========================================================================
+Multiple scopes completion
+========================================================================
+primitive Int;
+
+fun test() {
+    let a: Int = 1;
+    {
+        let b: Int = 2;
+        {
+            let c: Int = 3;
+            <caret>
+        }
+    }
+}
+------------------------------------------------------------------------
+5  a   Int
+5  b   Int
+5  c   Int
+13 false
+13 null
+13 return;
+13 true
+2  test()
+13 codeOf Contract   Cell
+13 initOf Contract(params)   StateInit
+14 do
+14 foreach
+14 if
+14 ife
+14 let
+14 lett
+14 repeat
+14 try
+14 try-catch
+14 until
+14 while
+
+========================================================================
+Loop variable completion
+========================================================================
+primitive Int;
+
+fun test() {
+    let items: map<Int, Int> = emptyMap();
+
+    foreach(key, value in items) {
+        <caret>
+    }
+}
+------------------------------------------------------------------------
+5  items   map<Int, Int>
+5  key   Int
+5  value   Int
+13 false
+13 null
+13 return;
+13 true
+2  test()
+13 codeOf Contract   Cell
+13 initOf Contract(params)   StateInit
+14 do
+14 foreach
+14 if
+14 ife
+14 let
+14 lett
+14 repeat
+14 try
+14 try-catch
+14 until
+14 while
+
+========================================================================
+Try-catch variable completion in try
+========================================================================
+primitive Int;
+
+fun test() {
+    let value: Int = 0;
+    try {
+        let result: Int = value + 1;
+        <caret>
+    } catch(error) {
+        // ...
+    }
+}
+------------------------------------------------------------------------
+5  result   Int
+5  value   Int
+13 false
+13 null
+13 return;
+13 true
+2  test()
+13 codeOf Contract   Cell
+13 initOf Contract(params)   StateInit
+14 do
+14 foreach
+14 if
+14 ife
+14 let
+14 lett
+14 repeat
+14 try
+14 try-catch
+14 until
+14 while
+
+========================================================================
+Try-catch variable completion in catch
+========================================================================
+primitive Int;
+
+fun test() {
+    let value: Int = 0;
+    try {
+        let result: Int = value + 1;
+    } catch(error) {
+        <caret>
+    }
+}
+------------------------------------------------------------------------
+5  error   Int
+5  value   Int
+13 false
+13 null
+13 return;
+13 true
+2  test()
+13 codeOf Contract   Cell
+13 initOf Contract(params)   StateInit
+14 do
+14 foreach
+14 if
+14 ife
+14 let
+14 lett
+14 repeat
+14 try
+14 try-catch
+14 until
+14 while
+
+========================================================================
+Variable shadowing
+========================================================================
+primitive Int;
+
+fun test() {
+    let value: Int = 1;
+    {
+        let value: Int = 2;
+        <caret>
+    }
+}
+------------------------------------------------------------------------
+5  value   Int
+13 false
+13 null
+13 return;
+13 true
+2  test()
+13 codeOf Contract   Cell
+13 initOf Contract(params)   StateInit
+14 do
+14 foreach
+14 if
+14 ife
+14 let
+14 lett
+14 repeat
+14 try
+14 try-catch
+14 until
+14 while
+
+========================================================================
+Fun parameter and local variable
+========================================================================
+primitive Int;
+
+fun test(param: Int) {
+    let local: Int = 2;
+    <caret>
+}
+------------------------------------------------------------------------
+5  local   Int
+5  param   Int
+13 false
+13 null
+13 return;
+13 true
+2  test(param: Int)
+13 codeOf Contract   Cell
+13 initOf Contract(params)   StateInit
+14 do
+14 foreach
+14 if
+14 ife
+14 let
+14 lett
+14 repeat
+14 try
+14 try-catch
+14 until
+14 while
+
+========================================================================
+Variable not accessible before declaration // TODO
+========================================================================
+primitive Int;
+
+fun test() {
+    <caret>
+    let variable: Int = 1;
+}
+------------------------------------------------------------------------
+13 false
+13 null
+13 return;
+13 true
+2  test()
+13 codeOf Contract   Cell
+13 initOf Contract(params)   StateInit
+14 do
+14 foreach
+14 if
+14 ife
+14 let
+14 lett
+14 repeat
+14 try
+14 try-catch
+14 until
+14 while
+
+========================================================================
+Variable accessible after declaration
+========================================================================
+primitive Int;
+
+fun test() {
+    let variable: Int = 1;
+    <caret>
+}
+------------------------------------------------------------------------
+5  variable   Int
+13 false
+13 null
+13 return;
+13 true
+2  test()
+13 codeOf Contract   Cell
+13 initOf Contract(params)   StateInit
+14 do
+14 foreach
+14 if
+14 ife
+14 let
+14 lett
+14 repeat
+14 try
+14 try-catch
+14 until
+14 while
+
+========================================================================
+Multiple variables declaration order // TODO
+========================================================================
+primitive Int;
+
+fun test() {
+    <caret>
+    let first = 1;
+    let second = 2;
+    {
+        let third = 3;
+    }
+}
+------------------------------------------------------------------------
+13 false
+13 null
+13 return;
+13 true
+2  test()
+13 codeOf Contract   Cell
+13 initOf Contract(params)   StateInit
+14 do
+14 foreach
+14 if
+14 ife
+14 let
+14 lett
+14 repeat
+14 try
+14 try-catch
+14 until
+14 while
+
+========================================================================
+Multiple variables after declarations
+========================================================================
+primitive Int;
+
+fun test() {
+    let first = 1;
+    let second = 2;
+    {
+        let third = 3;
+        <caret>
+    }
+}
+------------------------------------------------------------------------
+5  first   Int
+5  second   Int
+5  third   Int
+13 false
+13 null
+13 return;
+13 true
+2  test()
+13 codeOf Contract   Cell
+13 initOf Contract(params)   StateInit
+14 do
+14 foreach
+14 if
+14 ife
+14 let
+14 lett
+14 repeat
+14 try
+14 try-catch
+14 until
+14 while
+
+========================================================================
+Completion in variable name
+========================================================================
+primitive Int;
+
+fun test() {
+    let <caret>
+}
+------------------------------------------------------------------------
+No completion items
+
+========================================================================
+Completion in variable name 2
+========================================================================
+primitive Int;
+
+fun test() {
+    let <caret> = 10;
+}
+------------------------------------------------------------------------
+No completion items
+
+========================================================================
+Variable and function with the same name
+========================================================================
+primitive Int;
+
+fun first() {}
+
+fun test() {
+    let first = 1;
+    <caret>
+}
+------------------------------------------------------------------------
+5  first   Int
+13 false
+13 null
+13 return;
+13 true
+2  first()
+2  test()
+13 codeOf Contract   Cell
+13 initOf Contract(params)   StateInit
+14 do
+14 foreach
+14 if
+14 ife
+14 let
+14 lett
+14 repeat
+14 try
+14 try-catch
+14 until
+14 while

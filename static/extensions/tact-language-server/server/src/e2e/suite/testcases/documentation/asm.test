@@ -1,0 +1,55 @@
+========================================================================
+PUSHINT instruction
+========================================================================
+primitive Int;
+
+asm fun foo() { 10 <caret>PUSHINT }
+------------------------------------------------------------------------
+```
+PUSHINT_4
+```
+- Stack (top is on the right): `(∅ → x)`
+- Gas: `18`
+
+Pushes integer `x` into the stack. `-5 <= x <= 10`.
+Here `i` equals four lower-order bits of `x` (`i=x mod 16`).
+
+========================================================================
+ENDC instruction
+========================================================================
+primitive Int;
+
+asm fun foo() { <caret>ENDC }
+------------------------------------------------------------------------
+```
+ENDC
+```
+- Stack (top is on the right): `(b → c)`
+- Gas: `518`
+
+Converts a _Builder_ into an ordinary _Cell_.
+
+========================================================================
+NIP instruction
+========================================================================
+primitive Int;
+
+asm fun foo() { <caret>NIP }
+------------------------------------------------------------------------
+```
+NIP (alias of 1 POP)
+```
+- Stack (top is on the right): `(x y → y)`
+
+Same as `s1 POP`.
+
+---
+Aliased instruction info:
+
+```
+POP
+```
+
+- Gas: `18`
+
+Pops the old `s0` value into the old `s[i]`.
