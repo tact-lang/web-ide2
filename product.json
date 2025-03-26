@@ -27,5 +27,8 @@
 			"authority": "ide.tact-lang.org",
 			"path": "static/extensions/tact-language-server"
 		}
-	]
+	],
+	"initialColorTheme": {
+		"themeType": "dark"
+	}
 }
