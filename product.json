@@ -21,6 +21,11 @@
 			"scheme": "https",
 			"authority": "ide.tact-lang.org",
 			"path": "static/extensions/vscode-web-playground"
+		},
+		{
+			"scheme": "https",
+			"authority": "ide.tact-lang.org",
+			"path": "static/extensions/tact-language-server"
 		}
 	]
 }
