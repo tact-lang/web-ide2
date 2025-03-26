@@ -44,6 +44,7 @@
         "postinstall": "husky"
     },
     "main": "./dist/client",
+    "browser": "./dist/client",
     "contributes": {
         "languages": [
             {
@@ -598,5 +599,15 @@
                 }
             }
         ]
-    }
+    },
+    "capabilities": {
+        "virtualWorkspaces": true,
+        "untrustedWorkspaces": {
+            "supported": true
+        }
+    },
+    "extensionKind": [
+        "workspace",
+        "web"
+    ]
 }
