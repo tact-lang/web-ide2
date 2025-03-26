@@ -28,7 +28,7 @@
 			"path": "static/extensions/tact-language-server"
 		}
 	],
-	"initialColorTheme": {
+	"_initialColorTheme": {
 		"themeType": "dark"
 	}
 }
