@@ -804,1652 +804,6 @@ process.umask = function() { return 0; };
 
 /***/ }),
 
-/***/ "./node_modules/semver/classes/comparator.js":
-/*!***************************************************!*\
-  !*** ./node_modules/semver/classes/comparator.js ***!
-  \***************************************************/
-/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
-
-const ANY = Symbol('SemVer ANY')
-// hoisted class for cyclic dependency
-class Comparator {
-  static get ANY () {
-    return ANY
-  }
-
-  constructor (comp, options) {
-    options = parseOptions(options)
-
-    if (comp instanceof Comparator) {
-      if (comp.loose === !!options.loose) {
-        return comp
-      } else {
-        comp = comp.value
-      }
-    }
-
-    comp = comp.trim().split(/\s+/).join(' ')
-    debug('comparator', comp, options)
-    this.options = options
-    this.loose = !!options.loose
-    this.parse(comp)
-
-    if (this.semver === ANY) {
-      this.value = ''
-    } else {
-      this.value = this.operator + this.semver.version
-    }
-
-    debug('comp', this)
-  }
-
-  parse (comp) {
-    const r = this.options.loose ? re[t.COMPARATORLOOSE] : re[t.COMPARATOR]
-    const m = comp.match(r)
-
-    if (!m) {
-      throw new TypeError(`Invalid comparator: ${comp}`)
-    }
-
-    this.operator = m[1] !== undefined ? m[1] : ''
-    if (this.operator === '=') {
-      this.operator = ''
-    }
-
-    // if it literally is just '>' or '' then allow anything.
-    if (!m[2]) {
-      this.semver = ANY
-    } else {
-      this.semver = new SemVer(m[2], this.options.loose)
-    }
-  }
-
-  toString () {
-    return this.value
-  }
-
-  test (version) {
-    debug('Comparator.test', version, this.options.loose)
-
-    if (this.semver === ANY || version === ANY) {
-      return true
-    }
-
-    if (typeof version === 'string') {
-      try {
-        version = new SemVer(version, this.options)
-      } catch (er) {
-        return false
-      }
-    }
-
-    return cmp(version, this.operator, this.semver, this.options)
-  }
-
-  intersects (comp, options) {
-    if (!(comp instanceof Comparator)) {
-      throw new TypeError('a Comparator is required')
-    }
-
-    if (this.operator === '') {
-      if (this.value === '') {
-        return true
-      }
-      return new Range(comp.value, options).test(this.value)
-    } else if (comp.operator === '') {
-      if (comp.value === '') {
-        return true
-      }
-      return new Range(this.value, options).test(comp.semver)
-    }
-
-    options = parseOptions(options)
-
-    // Special cases where nothing can possibly be lower
-    if (options.includePrerelease &&
-      (this.value === '<0.0.0-0' || comp.value === '<0.0.0-0')) {
-      return false
-    }
-    if (!options.includePrerelease &&
-      (this.value.startsWith('<0.0.0') || comp.value.startsWith('<0.0.0'))) {
-      return false
-    }
-
-    // Same direction increasing (> or >=)
-    if (this.operator.startsWith('>') && comp.operator.startsWith('>')) {
-      return true
-    }
-    // Same direction decreasing (< or <=)
-    if (this.operator.startsWith('<') && comp.operator.startsWith('<')) {
-      return true
-    }
-    // same SemVer and both sides are inclusive (<= or >=)
-    if (
-      (this.semver.version === comp.semver.version) &&
-      this.operator.includes('=') && comp.operator.includes('=')) {
-      return true
-    }
-    // opposite directions less than
-    if (cmp(this.semver, '<', comp.semver, options) &&
-      this.operator.startsWith('>') && comp.operator.startsWith('<')) {
-      return true
-    }
-    // opposite directions greater than
-    if (cmp(this.semver, '>', comp.semver, options) &&
-      this.operator.startsWith('<') && comp.operator.startsWith('>')) {
-      return true
-    }
-    return false
-  }
-}
-
-module.exports = Comparator
-
-const parseOptions = __webpack_require__(/*! ../internal/parse-options */ "./node_modules/semver/internal/parse-options.js")
-const { safeRe: re, t } = __webpack_require__(/*! ../internal/re */ "./node_modules/semver/internal/re.js")
-const cmp = __webpack_require__(/*! ../functions/cmp */ "./node_modules/semver/functions/cmp.js")
-const debug = __webpack_require__(/*! ../internal/debug */ "./node_modules/semver/internal/debug.js")
-const SemVer = __webpack_require__(/*! ./semver */ "./node_modules/semver/classes/semver.js")
-const Range = __webpack_require__(/*! ./range */ "./node_modules/semver/classes/range.js")
-
-
-/***/ }),
-
-/***/ "./node_modules/semver/classes/range.js":
-/*!**********************************************!*\
-  !*** ./node_modules/semver/classes/range.js ***!
-  \**********************************************/
-/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
-
-const SPACE_CHARACTERS = /\s+/g
-
-// hoisted class for cyclic dependency
-class Range {
-  constructor (range, options) {
-    options = parseOptions(options)
-
-    if (range instanceof Range) {
-      if (
-        range.loose === !!options.loose &&
-        range.includePrerelease === !!options.includePrerelease
-      ) {
-        return range
-      } else {
-        return new Range(range.raw, options)
-      }
-    }
-
-    if (range instanceof Comparator) {
-      // just put it in the set and return
-      this.raw = range.value
-      this.set = [[range]]
-      this.formatted = undefined
-      return this
-    }
-
-    this.options = options
-    this.loose = !!options.loose
-    this.includePrerelease = !!options.includePrerelease
-
-    // First reduce all whitespace as much as possible so we do not have to rely
-    // on potentially slow regexes like \s*. This is then stored and used for
-    // future error messages as well.
-    this.raw = range.trim().replace(SPACE_CHARACTERS, ' ')
-
-    // First, split on ||
-    this.set = this.raw
-      .split('||')
-      // map the range to a 2d array of comparators
-      .map(r => this.parseRange(r.trim()))
-      // throw out any comparator lists that are empty
-      // this generally means that it was not a valid range, which is allowed
-      // in loose mode, but will still throw if the WHOLE range is invalid.
-      .filter(c => c.length)
-
-    if (!this.set.length) {
-      throw new TypeError(`Invalid SemVer Range: ${this.raw}`)
-    }
-
-    // if we have any that are not the null set, throw out null sets.
-    if (this.set.length > 1) {
-      // keep the first one, in case they're all null sets
-      const first = this.set[0]
-      this.set = this.set.filter(c => !isNullSet(c[0]))
-      if (this.set.length === 0) {
-        this.set = [first]
-      } else if (this.set.length > 1) {
-        // if we have any that are *, then the range is just *
-        for (const c of this.set) {
-          if (c.length === 1 && isAny(c[0])) {
-            this.set = [c]
-            break
-          }
-        }
-      }
-    }
-
-    this.formatted = undefined
-  }
-
-  get range () {
-    if (this.formatted === undefined) {
-      this.formatted = ''
-      for (let i = 0; i < this.set.length; i++) {
-        if (i > 0) {
-          this.formatted += '||'
-        }
-        const comps = this.set[i]
-        for (let k = 0; k < comps.length; k++) {
-          if (k > 0) {
-            this.formatted += ' '
-          }
-          this.formatted += comps[k].toString().trim()
-        }
-      }
-    }
-    return this.formatted
-  }
-
-  format () {
-    return this.range
-  }
-
-  toString () {
-    return this.range
-  }
-
-  parseRange (range) {
-    // memoize range parsing for performance.
-    // this is a very hot path, and fully deterministic.
-    const memoOpts =
-      (this.options.includePrerelease && FLAG_INCLUDE_PRERELEASE) |
-      (this.options.loose && FLAG_LOOSE)
-    const memoKey = memoOpts + ':' + range
-    const cached = cache.get(memoKey)
-    if (cached) {
-      return cached
-    }
-
-    const loose = this.options.loose
-    // `1.2.3 - 1.2.4` => `>=1.2.3 <=1.2.4`
-    const hr = loose ? re[t.HYPHENRANGELOOSE] : re[t.HYPHENRANGE]
-    range = range.replace(hr, hyphenReplace(this.options.includePrerelease))
-    debug('hyphen replace', range)
-
-    // `> 1.2.3 < 1.2.5` => `>1.2.3 <1.2.5`
-    range = range.replace(re[t.COMPARATORTRIM], comparatorTrimReplace)
-    debug('comparator trim', range)
-
-    // `~ 1.2.3` => `~1.2.3`
-    range = range.replace(re[t.TILDETRIM], tildeTrimReplace)
-    debug('tilde trim', range)
-
-    // `^ 1.2.3` => `^1.2.3`
-    range = range.replace(re[t.CARETTRIM], caretTrimReplace)
-    debug('caret trim', range)
-
-    // At this point, the range is completely trimmed and
-    // ready to be split into comparators.
-
-    let rangeList = range
-      .split(' ')
-      .map(comp => parseComparator(comp, this.options))
-      .join(' ')
-      .split(/\s+/)
-      // >=0.0.0 is equivalent to *
-      .map(comp => replaceGTE0(comp, this.options))
-
-    if (loose) {
-      // in loose mode, throw out any that are not valid comparators
-      rangeList = rangeList.filter(comp => {
-        debug('loose invalid filter', comp, this.options)
-        return !!comp.match(re[t.COMPARATORLOOSE])
-      })
-    }
-    debug('range list', rangeList)
-
-    // if any comparators are the null set, then replace with JUST null set
-    // if more than one comparator, remove any * comparators
-    // also, don't include the same comparator more than once
-    const rangeMap = new Map()
-    const comparators = rangeList.map(comp => new Comparator(comp, this.options))
-    for (const comp of comparators) {
-      if (isNullSet(comp)) {
-        return [comp]
-      }
-      rangeMap.set(comp.value, comp)
-    }
-    if (rangeMap.size > 1 && rangeMap.has('')) {
-      rangeMap.delete('')
-    }
-
-    const result = [...rangeMap.values()]
-    cache.set(memoKey, result)
-    return result
-  }
-
-  intersects (range, options) {
-    if (!(range instanceof Range)) {
-      throw new TypeError('a Range is required')
-    }
-
-    return this.set.some((thisComparators) => {
-      return (
-        isSatisfiable(thisComparators, options) &&
-        range.set.some((rangeComparators) => {
-          return (
-            isSatisfiable(rangeComparators, options) &&
-            thisComparators.every((thisComparator) => {
-              return rangeComparators.every((rangeComparator) => {
-                return thisComparator.intersects(rangeComparator, options)
-              })
-            })
-          )
-        })
-      )
-    })
-  }
-
-  // if ANY of the sets match ALL of its comparators, then pass
-  test (version) {
-    if (!version) {
-      return false
-    }
-
-    if (typeof version === 'string') {
-      try {
-        version = new SemVer(version, this.options)
-      } catch (er) {
-        return false
-      }
-    }
-
-    for (let i = 0; i < this.set.length; i++) {
-      if (testSet(this.set[i], version, this.options)) {
-        return true
-      }
-    }
-    return false
-  }
-}
-
-module.exports = Range
-
-const LRU = __webpack_require__(/*! ../internal/lrucache */ "./node_modules/semver/internal/lrucache.js")
-const cache = new LRU()
-
-const parseOptions = __webpack_require__(/*! ../internal/parse-options */ "./node_modules/semver/internal/parse-options.js")
-const Comparator = __webpack_require__(/*! ./comparator */ "./node_modules/semver/classes/comparator.js")
-const debug = __webpack_require__(/*! ../internal/debug */ "./node_modules/semver/internal/debug.js")
-const SemVer = __webpack_require__(/*! ./semver */ "./node_modules/semver/classes/semver.js")
-const {
-  safeRe: re,
-  t,
-  comparatorTrimReplace,
-  tildeTrimReplace,
-  caretTrimReplace,
-} = __webpack_require__(/*! ../internal/re */ "./node_modules/semver/internal/re.js")
-const { FLAG_INCLUDE_PRERELEASE, FLAG_LOOSE } = __webpack_require__(/*! ../internal/constants */ "./node_modules/semver/internal/constants.js")
-
-const isNullSet = c => c.value === '<0.0.0-0'
-const isAny = c => c.value === ''
-
-// take a set of comparators and determine whether there
-// exists a version which can satisfy it
-const isSatisfiable = (comparators, options) => {
-  let result = true
-  const remainingComparators = comparators.slice()
-  let testComparator = remainingComparators.pop()
-
-  while (result && remainingComparators.length) {
-    result = remainingComparators.every((otherComparator) => {
-      return testComparator.intersects(otherComparator, options)
-    })
-
-    testComparator = remainingComparators.pop()
-  }
-
-  return result
-}
-
-// comprised of xranges, tildes, stars, and gtlt's at this point.
-// already replaced the hyphen ranges
-// turn into a set of JUST comparators.
-const parseComparator = (comp, options) => {
-  debug('comp', comp, options)
-  comp = replaceCarets(comp, options)
-  debug('caret', comp)
-  comp = replaceTildes(comp, options)
-  debug('tildes', comp)
-  comp = replaceXRanges(comp, options)
-  debug('xrange', comp)
-  comp = replaceStars(comp, options)
-  debug('stars', comp)
-  return comp
-}
-
-const isX = id => !id || id.toLowerCase() === 'x' || id === '*'
-
-// ~, ~> --> * (any, kinda silly)
-// ~2, ~2.x, ~2.x.x, ~>2, ~>2.x ~>2.x.x --> >=2.0.0 <3.0.0-0
-// ~2.0, ~2.0.x, ~>2.0, ~>2.0.x --> >=2.0.0 <2.1.0-0
-// ~1.2, ~1.2.x, ~>1.2, ~>1.2.x --> >=1.2.0 <1.3.0-0
-// ~1.2.3, ~>1.2.3 --> >=1.2.3 <1.3.0-0
-// ~1.2.0, ~>1.2.0 --> >=1.2.0 <1.3.0-0
-// ~0.0.1 --> >=0.0.1 <0.1.0-0
-const replaceTildes = (comp, options) => {
-  return comp
-    .trim()
-    .split(/\s+/)
-    .map((c) => replaceTilde(c, options))
-    .join(' ')
-}
-
-const replaceTilde = (comp, options) => {
-  const r = options.loose ? re[t.TILDELOOSE] : re[t.TILDE]
-  return comp.replace(r, (_, M, m, p, pr) => {
-    debug('tilde', comp, _, M, m, p, pr)
-    let ret
-
-    if (isX(M)) {
-      ret = ''
-    } else if (isX(m)) {
-      ret = `>=${M}.0.0 <${+M + 1}.0.0-0`
-    } else if (isX(p)) {
-      // ~1.2 == >=1.2.0 <1.3.0-0
-      ret = `>=${M}.${m}.0 <${M}.${+m + 1}.0-0`
-    } else if (pr) {
-      debug('replaceTilde pr', pr)
-      ret = `>=${M}.${m}.${p}-${pr
-      } <${M}.${+m + 1}.0-0`
-    } else {
-      // ~1.2.3 == >=1.2.3 <1.3.0-0
-      ret = `>=${M}.${m}.${p
-      } <${M}.${+m + 1}.0-0`
-    }
-
-    debug('tilde return', ret)
-    return ret
-  })
-}
-
-// ^ --> * (any, kinda silly)
-// ^2, ^2.x, ^2.x.x --> >=2.0.0 <3.0.0-0
-// ^2.0, ^2.0.x --> >=2.0.0 <3.0.0-0
-// ^1.2, ^1.2.x --> >=1.2.0 <2.0.0-0
-// ^1.2.3 --> >=1.2.3 <2.0.0-0
-// ^1.2.0 --> >=1.2.0 <2.0.0-0
-// ^0.0.1 --> >=0.0.1 <0.0.2-0
-// ^0.1.0 --> >=0.1.0 <0.2.0-0
-const replaceCarets = (comp, options) => {
-  return comp
-    .trim()
-    .split(/\s+/)
-    .map((c) => replaceCaret(c, options))
-    .join(' ')
-}
-
-const replaceCaret = (comp, options) => {
-  debug('caret', comp, options)
-  const r = options.loose ? re[t.CARETLOOSE] : re[t.CARET]
-  const z = options.includePrerelease ? '-0' : ''
-  return comp.replace(r, (_, M, m, p, pr) => {
-    debug('caret', comp, _, M, m, p, pr)
-    let ret
-
-    if (isX(M)) {
-      ret = ''
-    } else if (isX(m)) {
-      ret = `>=${M}.0.0${z} <${+M + 1}.0.0-0`
-    } else if (isX(p)) {
-      if (M === '0') {
-        ret = `>=${M}.${m}.0${z} <${M}.${+m + 1}.0-0`
-      } else {
-        ret = `>=${M}.${m}.0${z} <${+M + 1}.0.0-0`
-      }
-    } else if (pr) {
-      debug('replaceCaret pr', pr)
-      if (M === '0') {
-        if (m === '0') {
-          ret = `>=${M}.${m}.${p}-${pr
-          } <${M}.${m}.${+p + 1}-0`
-        } else {
-          ret = `>=${M}.${m}.${p}-${pr
-          } <${M}.${+m + 1}.0-0`
-        }
-      } else {
-        ret = `>=${M}.${m}.${p}-${pr
-        } <${+M + 1}.0.0-0`
-      }
-    } else {
-      debug('no pr')
-      if (M === '0') {
-        if (m === '0') {
-          ret = `>=${M}.${m}.${p
-          }${z} <${M}.${m}.${+p + 1}-0`
-        } else {
-          ret = `>=${M}.${m}.${p
-          }${z} <${M}.${+m + 1}.0-0`
-        }
-      } else {
-        ret = `>=${M}.${m}.${p
-        } <${+M + 1}.0.0-0`
-      }
-    }
-
-    debug('caret return', ret)
-    return ret
-  })
-}
-
-const replaceXRanges = (comp, options) => {
-  debug('replaceXRanges', comp, options)
-  return comp
-    .split(/\s+/)
-    .map((c) => replaceXRange(c, options))
-    .join(' ')
-}
-
-const replaceXRange = (comp, options) => {
-  comp = comp.trim()
-  const r = options.loose ? re[t.XRANGELOOSE] : re[t.XRANGE]
-  return comp.replace(r, (ret, gtlt, M, m, p, pr) => {
-    debug('xRange', comp, ret, gtlt, M, m, p, pr)
-    const xM = isX(M)
-    const xm = xM || isX(m)
-    const xp = xm || isX(p)
-    const anyX = xp
-
-    if (gtlt === '=' && anyX) {
-      gtlt = ''
-    }
-
-    // if we're including prereleases in the match, then we need
-    // to fix this to -0, the lowest possible prerelease value
-    pr = options.includePrerelease ? '-0' : ''
-
-    if (xM) {
-      if (gtlt === '>' || gtlt === '<') {
-        // nothing is allowed
-        ret = '<0.0.0-0'
-      } else {
-        // nothing is forbidden
-        ret = '*'
-      }
-    } else if (gtlt && anyX) {
-      // we know patch is an x, because we have any x at all.
-      // replace X with 0
-      if (xm) {
-        m = 0
-      }
-      p = 0
-
-      if (gtlt === '>') {
-        // >1 => >=2.0.0
-        // >1.2 => >=1.3.0
-        gtlt = '>='
-        if (xm) {
-          M = +M + 1
-          m = 0
-          p = 0
-        } else {
-          m = +m + 1
-          p = 0
-        }
-      } else if (gtlt === '<=') {
-        // <=0.7.x is actually <0.8.0, since any 0.7.x should
-        // pass.  Similarly, <=7.x is actually <8.0.0, etc.
-        gtlt = '<'
-        if (xm) {
-          M = +M + 1
-        } else {
-          m = +m + 1
-        }
-      }
-
-      if (gtlt === '<') {
-        pr = '-0'
-      }
-
-      ret = `${gtlt + M}.${m}.${p}${pr}`
-    } else if (xm) {
-      ret = `>=${M}.0.0${pr} <${+M + 1}.0.0-0`
-    } else if (xp) {
-      ret = `>=${M}.${m}.0${pr
-      } <${M}.${+m + 1}.0-0`
-    }
-
-    debug('xRange return', ret)
-
-    return ret
-  })
-}
-
-// Because * is AND-ed with everything else in the comparator,
-// and '' means "any version", just remove the *s entirely.
-const replaceStars = (comp, options) => {
-  debug('replaceStars', comp, options)
-  // Looseness is ignored here.  star is always as loose as it gets!
-  return comp
-    .trim()
-    .replace(re[t.STAR], '')
-}
-
-const replaceGTE0 = (comp, options) => {
-  debug('replaceGTE0', comp, options)
-  return comp
-    .trim()
-    .replace(re[options.includePrerelease ? t.GTE0PRE : t.GTE0], '')
-}
-
-// This function is passed to string.replace(re[t.HYPHENRANGE])
-// M, m, patch, prerelease, build
-// 1.2 - 3.4.5 => >=1.2.0 <=3.4.5
-// 1.2.3 - 3.4 => >=1.2.0 <3.5.0-0 Any 3.4.x will do
-// 1.2 - 3.4 => >=1.2.0 <3.5.0-0
-// TODO build?
-const hyphenReplace = incPr => ($0,
-  from, fM, fm, fp, fpr, fb,
-  to, tM, tm, tp, tpr) => {
-  if (isX(fM)) {
-    from = ''
-  } else if (isX(fm)) {
-    from = `>=${fM}.0.0${incPr ? '-0' : ''}`
-  } else if (isX(fp)) {
-    from = `>=${fM}.${fm}.0${incPr ? '-0' : ''}`
-  } else if (fpr) {
-    from = `>=${from}`
-  } else {
-    from = `>=${from}${incPr ? '-0' : ''}`
-  }
-
-  if (isX(tM)) {
-    to = ''
-  } else if (isX(tm)) {
-    to = `<${+tM + 1}.0.0-0`
-  } else if (isX(tp)) {
-    to = `<${tM}.${+tm + 1}.0-0`
-  } else if (tpr) {
-    to = `<=${tM}.${tm}.${tp}-${tpr}`
-  } else if (incPr) {
-    to = `<${tM}.${tm}.${+tp + 1}-0`
-  } else {
-    to = `<=${to}`
-  }
-
-  return `${from} ${to}`.trim()
-}
-
-const testSet = (set, version, options) => {
-  for (let i = 0; i < set.length; i++) {
-    if (!set[i].test(version)) {
-      return false
-    }
-  }
-
-  if (version.prerelease.length && !options.includePrerelease) {
-    // Find the set of versions that are allowed to have prereleases
-    // For example, ^1.2.3-pr.1 desugars to >=1.2.3-pr.1 <2.0.0
-    // That should allow `1.2.3-pr.2` to pass.
-    // However, `1.2.4-alpha.notready` should NOT be allowed,
-    // even though it's within the range set by the comparators.
-    for (let i = 0; i < set.length; i++) {
-      debug(set[i].semver)
-      if (set[i].semver === Comparator.ANY) {
-        continue
-      }
-
-      if (set[i].semver.prerelease.length > 0) {
-        const allowed = set[i].semver
-        if (allowed.major === version.major &&
-            allowed.minor === version.minor &&
-            allowed.patch === version.patch) {
-          return true
-        }
-      }
-    }
-
-    // Version has a -pre, but it's not one of the ones we like.
-    return false
-  }
-
-  return true
-}
-
-
-/***/ }),
-
-/***/ "./node_modules/semver/classes/semver.js":
-/*!***********************************************!*\
-  !*** ./node_modules/semver/classes/semver.js ***!
-  \***********************************************/
-/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
-
-const debug = __webpack_require__(/*! ../internal/debug */ "./node_modules/semver/internal/debug.js")
-const { MAX_LENGTH, MAX_SAFE_INTEGER } = __webpack_require__(/*! ../internal/constants */ "./node_modules/semver/internal/constants.js")
-const { safeRe: re, safeSrc: src, t } = __webpack_require__(/*! ../internal/re */ "./node_modules/semver/internal/re.js")
-
-const parseOptions = __webpack_require__(/*! ../internal/parse-options */ "./node_modules/semver/internal/parse-options.js")
-const { compareIdentifiers } = __webpack_require__(/*! ../internal/identifiers */ "./node_modules/semver/internal/identifiers.js")
-class SemVer {
-  constructor (version, options) {
-    options = parseOptions(options)
-
-    if (version instanceof SemVer) {
-      if (version.loose === !!options.loose &&
-        version.includePrerelease === !!options.includePrerelease) {
-        return version
-      } else {
-        version = version.version
-      }
-    } else if (typeof version !== 'string') {
-      throw new TypeError(`Invalid version. Must be a string. Got type "${typeof version}".`)
-    }
-
-    if (version.length > MAX_LENGTH) {
-      throw new TypeError(
-        `version is longer than ${MAX_LENGTH} characters`
-      )
-    }
-
-    debug('SemVer', version, options)
-    this.options = options
-    this.loose = !!options.loose
-    // this isn't actually relevant for versions, but keep it so that we
-    // don't run into trouble passing this.options around.
-    this.includePrerelease = !!options.includePrerelease
-
-    const m = version.trim().match(options.loose ? re[t.LOOSE] : re[t.FULL])
-
-    if (!m) {
-      throw new TypeError(`Invalid Version: ${version}`)
-    }
-
-    this.raw = version
-
-    // these are actually numbers
-    this.major = +m[1]
-    this.minor = +m[2]
-    this.patch = +m[3]
-
-    if (this.major > MAX_SAFE_INTEGER || this.major < 0) {
-      throw new TypeError('Invalid major version')
-    }
-
-    if (this.minor > MAX_SAFE_INTEGER || this.minor < 0) {
-      throw new TypeError('Invalid minor version')
-    }
-
-    if (this.patch > MAX_SAFE_INTEGER || this.patch < 0) {
-      throw new TypeError('Invalid patch version')
-    }
-
-    // numberify any prerelease numeric ids
-    if (!m[4]) {
-      this.prerelease = []
-    } else {
-      this.prerelease = m[4].split('.').map((id) => {
-        if (/^[0-9]+$/.test(id)) {
-          const num = +id
-          if (num >= 0 && num < MAX_SAFE_INTEGER) {
-            return num
-          }
-        }
-        return id
-      })
-    }
-
-    this.build = m[5] ? m[5].split('.') : []
-    this.format()
-  }
-
-  format () {
-    this.version = `${this.major}.${this.minor}.${this.patch}`
-    if (this.prerelease.length) {
-      this.version += `-${this.prerelease.join('.')}`
-    }
-    return this.version
-  }
-
-  toString () {
-    return this.version
-  }
-
-  compare (other) {
-    debug('SemVer.compare', this.version, this.options, other)
-    if (!(other instanceof SemVer)) {
-      if (typeof other === 'string' && other === this.version) {
-        return 0
-      }
-      other = new SemVer(other, this.options)
-    }
-
-    if (other.version === this.version) {
-      return 0
-    }
-
-    return this.compareMain(other) || this.comparePre(other)
-  }
-
-  compareMain (other) {
-    if (!(other instanceof SemVer)) {
-      other = new SemVer(other, this.options)
-    }
-
-    return (
-      compareIdentifiers(this.major, other.major) ||
-      compareIdentifiers(this.minor, other.minor) ||
-      compareIdentifiers(this.patch, other.patch)
-    )
-  }
-
-  comparePre (other) {
-    if (!(other instanceof SemVer)) {
-      other = new SemVer(other, this.options)
-    }
-
-    // NOT having a prerelease is > having one
-    if (this.prerelease.length && !other.prerelease.length) {
-      return -1
-    } else if (!this.prerelease.length && other.prerelease.length) {
-      return 1
-    } else if (!this.prerelease.length && !other.prerelease.length) {
-      return 0
-    }
-
-    let i = 0
-    do {
-      const a = this.prerelease[i]
-      const b = other.prerelease[i]
-      debug('prerelease compare', i, a, b)
-      if (a === undefined && b === undefined) {
-        return 0
-      } else if (b === undefined) {
-        return 1
-      } else if (a === undefined) {
-        return -1
-      } else if (a === b) {
-        continue
-      } else {
-        return compareIdentifiers(a, b)
-      }
-    } while (++i)
-  }
-
-  compareBuild (other) {
-    if (!(other instanceof SemVer)) {
-      other = new SemVer(other, this.options)
-    }
-
-    let i = 0
-    do {
-      const a = this.build[i]
-      const b = other.build[i]
-      debug('build compare', i, a, b)
-      if (a === undefined && b === undefined) {
-        return 0
-      } else if (b === undefined) {
-        return 1
-      } else if (a === undefined) {
-        return -1
-      } else if (a === b) {
-        continue
-      } else {
-        return compareIdentifiers(a, b)
-      }
-    } while (++i)
-  }
-
-  // preminor will bump the version up to the next minor release, and immediately
-  // down to pre-release. premajor and prepatch work the same way.
-  inc (release, identifier, identifierBase) {
-    if (release.startsWith('pre')) {
-      if (!identifier && identifierBase === false) {
-        throw new Error('invalid increment argument: identifier is empty')
-      }
-      // Avoid an invalid semver results
-      if (identifier) {
-        const r = new RegExp(`^${this.options.loose ? src[t.PRERELEASELOOSE] : src[t.PRERELEASE]}$`)
-        const match = `-${identifier}`.match(r)
-        if (!match || match[1] !== identifier) {
-          throw new Error(`invalid identifier: ${identifier}`)
-        }
-      }
-    }
-
-    switch (release) {
-      case 'premajor':
-        this.prerelease.length = 0
-        this.patch = 0
-        this.minor = 0
-        this.major++
-        this.inc('pre', identifier, identifierBase)
-        break
-      case 'preminor':
-        this.prerelease.length = 0
-        this.patch = 0
-        this.minor++
-        this.inc('pre', identifier, identifierBase)
-        break
-      case 'prepatch':
-        // If this is already a prerelease, it will bump to the next version
-        // drop any prereleases that might already exist, since they are not
-        // relevant at this point.
-        this.prerelease.length = 0
-        this.inc('patch', identifier, identifierBase)
-        this.inc('pre', identifier, identifierBase)
-        break
-      // If the input is a non-prerelease version, this acts the same as
-      // prepatch.
-      case 'prerelease':
-        if (this.prerelease.length === 0) {
-          this.inc('patch', identifier, identifierBase)
-        }
-        this.inc('pre', identifier, identifierBase)
-        break
-      case 'release':
-        if (this.prerelease.length === 0) {
-          throw new Error(`version ${this.raw} is not a prerelease`)
-        }
-        this.prerelease.length = 0
-        break
-
-      case 'major':
-        // If this is a pre-major version, bump up to the same major version.
-        // Otherwise increment major.
-        // 1.0.0-5 bumps to 1.0.0
-        // 1.1.0 bumps to 2.0.0
-        if (
-          this.minor !== 0 ||
-          this.patch !== 0 ||
-          this.prerelease.length === 0
-        ) {
-          this.major++
-        }
-        this.minor = 0
-        this.patch = 0
-        this.prerelease = []
-        break
-      case 'minor':
-        // If this is a pre-minor version, bump up to the same minor version.
-        // Otherwise increment minor.
-        // 1.2.0-5 bumps to 1.2.0
-        // 1.2.1 bumps to 1.3.0
-        if (this.patch !== 0 || this.prerelease.length === 0) {
-          this.minor++
-        }
-        this.patch = 0
-        this.prerelease = []
-        break
-      case 'patch':
-        // If this is not a pre-release version, it will increment the patch.
-        // If it is a pre-release it will bump up to the same patch version.
-        // 1.2.0-5 patches to 1.2.0
-        // 1.2.0 patches to 1.2.1
-        if (this.prerelease.length === 0) {
-          this.patch++
-        }
-        this.prerelease = []
-        break
-      // This probably shouldn't be used publicly.
-      // 1.0.0 'pre' would become 1.0.0-0 which is the wrong direction.
-      case 'pre': {
-        const base = Number(identifierBase) ? 1 : 0
-
-        if (this.prerelease.length === 0) {
-          this.prerelease = [base]
-        } else {
-          let i = this.prerelease.length
-          while (--i >= 0) {
-            if (typeof this.prerelease[i] === 'number') {
-              this.prerelease[i]++
-              i = -2
-            }
-          }
-          if (i === -1) {
-            // didn't increment anything
-            if (identifier === this.prerelease.join('.') && identifierBase === false) {
-              throw new Error('invalid increment argument: identifier already exists')
-            }
-            this.prerelease.push(base)
-          }
-        }
-        if (identifier) {
-          // 1.2.0-beta.1 bumps to 1.2.0-beta.2,
-          // 1.2.0-beta.fooblz or 1.2.0-beta bumps to 1.2.0-beta.0
-          let prerelease = [identifier, base]
-          if (identifierBase === false) {
-            prerelease = [identifier]
-          }
-          if (compareIdentifiers(this.prerelease[0], identifier) === 0) {
-            if (isNaN(this.prerelease[1])) {
-              this.prerelease = prerelease
-            }
-          } else {
-            this.prerelease = prerelease
-          }
-        }
-        break
-      }
-      default:
-        throw new Error(`invalid increment argument: ${release}`)
-    }
-    this.raw = this.format()
-    if (this.build.length) {
-      this.raw += `+${this.build.join('.')}`
-    }
-    return this
-  }
-}
-
-module.exports = SemVer
-
-
-/***/ }),
-
-/***/ "./node_modules/semver/functions/cmp.js":
-/*!**********************************************!*\
-  !*** ./node_modules/semver/functions/cmp.js ***!
-  \**********************************************/
-/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
-
-const eq = __webpack_require__(/*! ./eq */ "./node_modules/semver/functions/eq.js")
-const neq = __webpack_require__(/*! ./neq */ "./node_modules/semver/functions/neq.js")
-const gt = __webpack_require__(/*! ./gt */ "./node_modules/semver/functions/gt.js")
-const gte = __webpack_require__(/*! ./gte */ "./node_modules/semver/functions/gte.js")
-const lt = __webpack_require__(/*! ./lt */ "./node_modules/semver/functions/lt.js")
-const lte = __webpack_require__(/*! ./lte */ "./node_modules/semver/functions/lte.js")
-
-const cmp = (a, op, b, loose) => {
-  switch (op) {
-    case '===':
-      if (typeof a === 'object') {
-        a = a.version
-      }
-      if (typeof b === 'object') {
-        b = b.version
-      }
-      return a === b
-
-    case '!==':
-      if (typeof a === 'object') {
-        a = a.version
-      }
-      if (typeof b === 'object') {
-        b = b.version
-      }
-      return a !== b
-
-    case '':
-    case '=':
-    case '==':
-      return eq(a, b, loose)
-
-    case '!=':
-      return neq(a, b, loose)
-
-    case '>':
-      return gt(a, b, loose)
-
-    case '>=':
-      return gte(a, b, loose)
-
-    case '<':
-      return lt(a, b, loose)
-
-    case '<=':
-      return lte(a, b, loose)
-
-    default:
-      throw new TypeError(`Invalid operator: ${op}`)
-  }
-}
-module.exports = cmp
-
-
-/***/ }),
-
-/***/ "./node_modules/semver/functions/compare.js":
-/*!**************************************************!*\
-  !*** ./node_modules/semver/functions/compare.js ***!
-  \**************************************************/
-/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
-
-const SemVer = __webpack_require__(/*! ../classes/semver */ "./node_modules/semver/classes/semver.js")
-const compare = (a, b, loose) =>
-  new SemVer(a, loose).compare(new SemVer(b, loose))
-
-module.exports = compare
-
-
-/***/ }),
-
-/***/ "./node_modules/semver/functions/eq.js":
-/*!*********************************************!*\
-  !*** ./node_modules/semver/functions/eq.js ***!
-  \*********************************************/
-/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
-
-const compare = __webpack_require__(/*! ./compare */ "./node_modules/semver/functions/compare.js")
-const eq = (a, b, loose) => compare(a, b, loose) === 0
-module.exports = eq
-
-
-/***/ }),
-
-/***/ "./node_modules/semver/functions/gt.js":
-/*!*********************************************!*\
-  !*** ./node_modules/semver/functions/gt.js ***!
-  \*********************************************/
-/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
-
-const compare = __webpack_require__(/*! ./compare */ "./node_modules/semver/functions/compare.js")
-const gt = (a, b, loose) => compare(a, b, loose) > 0
-module.exports = gt
-
-
-/***/ }),
-
-/***/ "./node_modules/semver/functions/gte.js":
-/*!**********************************************!*\
-  !*** ./node_modules/semver/functions/gte.js ***!
-  \**********************************************/
-/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
-
-const compare = __webpack_require__(/*! ./compare */ "./node_modules/semver/functions/compare.js")
-const gte = (a, b, loose) => compare(a, b, loose) >= 0
-module.exports = gte
-
-
-/***/ }),
-
-/***/ "./node_modules/semver/functions/lt.js":
-/*!*********************************************!*\
-  !*** ./node_modules/semver/functions/lt.js ***!
-  \*********************************************/
-/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
-
-const compare = __webpack_require__(/*! ./compare */ "./node_modules/semver/functions/compare.js")
-const lt = (a, b, loose) => compare(a, b, loose) < 0
-module.exports = lt
-
-
-/***/ }),
-
-/***/ "./node_modules/semver/functions/lte.js":
-/*!**********************************************!*\
-  !*** ./node_modules/semver/functions/lte.js ***!
-  \**********************************************/
-/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
-
-const compare = __webpack_require__(/*! ./compare */ "./node_modules/semver/functions/compare.js")
-const lte = (a, b, loose) => compare(a, b, loose) <= 0
-module.exports = lte
-
-
-/***/ }),
-
-/***/ "./node_modules/semver/functions/neq.js":
-/*!**********************************************!*\
-  !*** ./node_modules/semver/functions/neq.js ***!
-  \**********************************************/
-/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
-
-const compare = __webpack_require__(/*! ./compare */ "./node_modules/semver/functions/compare.js")
-const neq = (a, b, loose) => compare(a, b, loose) !== 0
-module.exports = neq
-
-
-/***/ }),
-
-/***/ "./node_modules/semver/functions/parse.js":
-/*!************************************************!*\
-  !*** ./node_modules/semver/functions/parse.js ***!
-  \************************************************/
-/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
-
-const SemVer = __webpack_require__(/*! ../classes/semver */ "./node_modules/semver/classes/semver.js")
-const parse = (version, options, throwErrors = false) => {
-  if (version instanceof SemVer) {
-    return version
-  }
-  try {
-    return new SemVer(version, options)
-  } catch (er) {
-    if (!throwErrors) {
-      return null
-    }
-    throw er
-  }
-}
-
-module.exports = parse
-
-
-/***/ }),
-
-/***/ "./node_modules/semver/functions/satisfies.js":
-/*!****************************************************!*\
-  !*** ./node_modules/semver/functions/satisfies.js ***!
-  \****************************************************/
-/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
-
-const Range = __webpack_require__(/*! ../classes/range */ "./node_modules/semver/classes/range.js")
-const satisfies = (version, range, options) => {
-  try {
-    range = new Range(range, options)
-  } catch (er) {
-    return false
-  }
-  return range.test(version)
-}
-module.exports = satisfies
-
-
-/***/ }),
-
-/***/ "./node_modules/semver/internal/constants.js":
-/*!***************************************************!*\
-  !*** ./node_modules/semver/internal/constants.js ***!
-  \***************************************************/
-/***/ ((module) => {
-
-// Note: this is the semver.org version of the spec that it implements
-// Not necessarily the package version of this code.
-const SEMVER_SPEC_VERSION = '2.0.0'
-
-const MAX_LENGTH = 256
-const MAX_SAFE_INTEGER = Number.MAX_SAFE_INTEGER ||
-/* istanbul ignore next */ 9007199254740991
-
-// Max safe segment length for coercion.
-const MAX_SAFE_COMPONENT_LENGTH = 16
-
-// Max safe length for a build identifier. The max length minus 6 characters for
-// the shortest version with a build 0.0.0+BUILD.
-const MAX_SAFE_BUILD_LENGTH = MAX_LENGTH - 6
-
-const RELEASE_TYPES = [
-  'major',
-  'premajor',
-  'minor',
-  'preminor',
-  'patch',
-  'prepatch',
-  'prerelease',
-]
-
-module.exports = {
-  MAX_LENGTH,
-  MAX_SAFE_COMPONENT_LENGTH,
-  MAX_SAFE_BUILD_LENGTH,
-  MAX_SAFE_INTEGER,
-  RELEASE_TYPES,
-  SEMVER_SPEC_VERSION,
-  FLAG_INCLUDE_PRERELEASE: 0b001,
-  FLAG_LOOSE: 0b010,
-}
-
-
-/***/ }),
-
-/***/ "./node_modules/semver/internal/debug.js":
-/*!***********************************************!*\
-  !*** ./node_modules/semver/internal/debug.js ***!
-  \***********************************************/
-/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
-
-/* provided dependency */ var process = __webpack_require__(/*! process/browser */ "./node_modules/process/browser.js");
-const debug = (
-  typeof process === 'object' &&
-  process.env &&
-  process.env.NODE_DEBUG &&
-  /\bsemver\b/i.test(process.env.NODE_DEBUG)
-) ? (...args) => console.error('SEMVER', ...args)
-  : () => {}
-
-module.exports = debug
-
-
-/***/ }),
-
-/***/ "./node_modules/semver/internal/identifiers.js":
-/*!*****************************************************!*\
-  !*** ./node_modules/semver/internal/identifiers.js ***!
-  \*****************************************************/
-/***/ ((module) => {
-
-const numeric = /^[0-9]+$/
-const compareIdentifiers = (a, b) => {
-  const anum = numeric.test(a)
-  const bnum = numeric.test(b)
-
-  if (anum && bnum) {
-    a = +a
-    b = +b
-  }
-
-  return a === b ? 0
-    : (anum && !bnum) ? -1
-    : (bnum && !anum) ? 1
-    : a < b ? -1
-    : 1
-}
-
-const rcompareIdentifiers = (a, b) => compareIdentifiers(b, a)
-
-module.exports = {
-  compareIdentifiers,
-  rcompareIdentifiers,
-}
-
-
-/***/ }),
-
-/***/ "./node_modules/semver/internal/lrucache.js":
-/*!**************************************************!*\
-  !*** ./node_modules/semver/internal/lrucache.js ***!
-  \**************************************************/
-/***/ ((module) => {
-
-class LRUCache {
-  constructor () {
-    this.max = 1000
-    this.map = new Map()
-  }
-
-  get (key) {
-    const value = this.map.get(key)
-    if (value === undefined) {
-      return undefined
-    } else {
-      // Remove the key from the map and add it to the end
-      this.map.delete(key)
-      this.map.set(key, value)
-      return value
-    }
-  }
-
-  delete (key) {
-    return this.map.delete(key)
-  }
-
-  set (key, value) {
-    const deleted = this.delete(key)
-
-    if (!deleted && value !== undefined) {
-      // If cache is full, delete the least recently used item
-      if (this.map.size >= this.max) {
-        const firstKey = this.map.keys().next().value
-        this.delete(firstKey)
-      }
-
-      this.map.set(key, value)
-    }
-
-    return this
-  }
-}
-
-module.exports = LRUCache
-
-
-/***/ }),
-
-/***/ "./node_modules/semver/internal/parse-options.js":
-/*!*******************************************************!*\
-  !*** ./node_modules/semver/internal/parse-options.js ***!
-  \*******************************************************/
-/***/ ((module) => {
-
-// parse out just the options we care about
-const looseOption = Object.freeze({ loose: true })
-const emptyOpts = Object.freeze({ })
-const parseOptions = options => {
-  if (!options) {
-    return emptyOpts
-  }
-
-  if (typeof options !== 'object') {
-    return looseOption
-  }
-
-  return options
-}
-module.exports = parseOptions
-
-
-/***/ }),
-
-/***/ "./node_modules/semver/internal/re.js":
-/*!********************************************!*\
-  !*** ./node_modules/semver/internal/re.js ***!
-  \********************************************/
-/***/ ((module, exports, __webpack_require__) => {
-
-const {
-  MAX_SAFE_COMPONENT_LENGTH,
-  MAX_SAFE_BUILD_LENGTH,
-  MAX_LENGTH,
-} = __webpack_require__(/*! ./constants */ "./node_modules/semver/internal/constants.js")
-const debug = __webpack_require__(/*! ./debug */ "./node_modules/semver/internal/debug.js")
-exports = module.exports = {}
-
-// The actual regexps go on exports.re
-const re = exports.re = []
-const safeRe = exports.safeRe = []
-const src = exports.src = []
-const safeSrc = exports.safeSrc = []
-const t = exports.t = {}
-let R = 0
-
-const LETTERDASHNUMBER = '[a-zA-Z0-9-]'
-
-// Replace some greedy regex tokens to prevent regex dos issues. These regex are
-// used internally via the safeRe object since all inputs in this library get
-// normalized first to trim and collapse all extra whitespace. The original
-// regexes are exported for userland consumption and lower level usage. A
-// future breaking change could export the safer regex only with a note that
-// all input should have extra whitespace removed.
-const safeRegexReplacements = [
-  ['\\s', 1],
-  ['\\d', MAX_LENGTH],
-  [LETTERDASHNUMBER, MAX_SAFE_BUILD_LENGTH],
-]
-
-const makeSafeRegex = (value) => {
-  for (const [token, max] of safeRegexReplacements) {
-    value = value
-      .split(`${token}*`).join(`${token}{0,${max}}`)
-      .split(`${token}+`).join(`${token}{1,${max}}`)
-  }
-  return value
-}
-
-const createToken = (name, value, isGlobal) => {
-  const safe = makeSafeRegex(value)
-  const index = R++
-  debug(name, index, value)
-  t[name] = index
-  src[index] = value
-  safeSrc[index] = safe
-  re[index] = new RegExp(value, isGlobal ? 'g' : undefined)
-  safeRe[index] = new RegExp(safe, isGlobal ? 'g' : undefined)
-}
-
-// The following Regular Expressions can be used for tokenizing,
-// validating, and parsing SemVer version strings.
-
-// ## Numeric Identifier
-// A single `0`, or a non-zero digit followed by zero or more digits.
-
-createToken('NUMERICIDENTIFIER', '0|[1-9]\\d*')
-createToken('NUMERICIDENTIFIERLOOSE', '\\d+')
-
-// ## Non-numeric Identifier
-// Zero or more digits, followed by a letter or hyphen, and then zero or
-// more letters, digits, or hyphens.
-
-createToken('NONNUMERICIDENTIFIER', `\\d*[a-zA-Z-]${LETTERDASHNUMBER}*`)
-
-// ## Main Version
-// Three dot-separated numeric identifiers.
-
-createToken('MAINVERSION', `(${src[t.NUMERICIDENTIFIER]})\\.` +
-                   `(${src[t.NUMERICIDENTIFIER]})\\.` +
-                   `(${src[t.NUMERICIDENTIFIER]})`)
-
-createToken('MAINVERSIONLOOSE', `(${src[t.NUMERICIDENTIFIERLOOSE]})\\.` +
-                        `(${src[t.NUMERICIDENTIFIERLOOSE]})\\.` +
-                        `(${src[t.NUMERICIDENTIFIERLOOSE]})`)
-
-// ## Pre-release Version Identifier
-// A numeric identifier, or a non-numeric identifier.
-
-createToken('PRERELEASEIDENTIFIER', `(?:${src[t.NUMERICIDENTIFIER]
-}|${src[t.NONNUMERICIDENTIFIER]})`)
-
-createToken('PRERELEASEIDENTIFIERLOOSE', `(?:${src[t.NUMERICIDENTIFIERLOOSE]
-}|${src[t.NONNUMERICIDENTIFIER]})`)
-
-// ## Pre-release Version
-// Hyphen, followed by one or more dot-separated pre-release version
-// identifiers.
-
-createToken('PRERELEASE', `(?:-(${src[t.PRERELEASEIDENTIFIER]
-}(?:\\.${src[t.PRERELEASEIDENTIFIER]})*))`)
-
-createToken('PRERELEASELOOSE', `(?:-?(${src[t.PRERELEASEIDENTIFIERLOOSE]
-}(?:\\.${src[t.PRERELEASEIDENTIFIERLOOSE]})*))`)
-
-// ## Build Metadata Identifier
-// Any combination of digits, letters, or hyphens.
-
-createToken('BUILDIDENTIFIER', `${LETTERDASHNUMBER}+`)
-
-// ## Build Metadata
-// Plus sign, followed by one or more period-separated build metadata
-// identifiers.
-
-createToken('BUILD', `(?:\\+(${src[t.BUILDIDENTIFIER]
-}(?:\\.${src[t.BUILDIDENTIFIER]})*))`)
-
-// ## Full Version String
-// A main version, followed optionally by a pre-release version and
-// build metadata.
-
-// Note that the only major, minor, patch, and pre-release sections of
-// the version string are capturing groups.  The build metadata is not a
-// capturing group, because it should not ever be used in version
-// comparison.
-
-createToken('FULLPLAIN', `v?${src[t.MAINVERSION]
-}${src[t.PRERELEASE]}?${
-  src[t.BUILD]}?`)
-
-createToken('FULL', `^${src[t.FULLPLAIN]}$`)
-
-// like full, but allows v1.2.3 and =1.2.3, which people do sometimes.
-// also, 1.0.0alpha1 (prerelease without the hyphen) which is pretty
-// common in the npm registry.
-createToken('LOOSEPLAIN', `[v=\\s]*${src[t.MAINVERSIONLOOSE]
-}${src[t.PRERELEASELOOSE]}?${
-  src[t.BUILD]}?`)
-
-createToken('LOOSE', `^${src[t.LOOSEPLAIN]}$`)
-
-createToken('GTLT', '((?:<|>)?=?)')
-
-// Something like "2.*" or "1.2.x".
-// Note that "x.x" is a valid xRange identifer, meaning "any version"
-// Only the first item is strictly required.
-createToken('XRANGEIDENTIFIERLOOSE', `${src[t.NUMERICIDENTIFIERLOOSE]}|x|X|\\*`)
-createToken('XRANGEIDENTIFIER', `${src[t.NUMERICIDENTIFIER]}|x|X|\\*`)
-
-createToken('XRANGEPLAIN', `[v=\\s]*(${src[t.XRANGEIDENTIFIER]})` +
-                   `(?:\\.(${src[t.XRANGEIDENTIFIER]})` +
-                   `(?:\\.(${src[t.XRANGEIDENTIFIER]})` +
-                   `(?:${src[t.PRERELEASE]})?${
-                     src[t.BUILD]}?` +
-                   `)?)?`)
-
-createToken('XRANGEPLAINLOOSE', `[v=\\s]*(${src[t.XRANGEIDENTIFIERLOOSE]})` +
-                        `(?:\\.(${src[t.XRANGEIDENTIFIERLOOSE]})` +
-                        `(?:\\.(${src[t.XRANGEIDENTIFIERLOOSE]})` +
-                        `(?:${src[t.PRERELEASELOOSE]})?${
-                          src[t.BUILD]}?` +
-                        `)?)?`)
-
-createToken('XRANGE', `^${src[t.GTLT]}\\s*${src[t.XRANGEPLAIN]}$`)
-createToken('XRANGELOOSE', `^${src[t.GTLT]}\\s*${src[t.XRANGEPLAINLOOSE]}$`)
-
-// Coercion.
-// Extract anything that could conceivably be a part of a valid semver
-createToken('COERCEPLAIN', `${'(^|[^\\d])' +
-              '(\\d{1,'}${MAX_SAFE_COMPONENT_LENGTH}})` +
-              `(?:\\.(\\d{1,${MAX_SAFE_COMPONENT_LENGTH}}))?` +
-              `(?:\\.(\\d{1,${MAX_SAFE_COMPONENT_LENGTH}}))?`)
-createToken('COERCE', `${src[t.COERCEPLAIN]}(?:$|[^\\d])`)
-createToken('COERCEFULL', src[t.COERCEPLAIN] +
-              `(?:${src[t.PRERELEASE]})?` +
-              `(?:${src[t.BUILD]})?` +
-              `(?:$|[^\\d])`)
-createToken('COERCERTL', src[t.COERCE], true)
-createToken('COERCERTLFULL', src[t.COERCEFULL], true)
-
-// Tilde ranges.
-// Meaning is "reasonably at or greater than"
-createToken('LONETILDE', '(?:~>?)')
-
-createToken('TILDETRIM', `(\\s*)${src[t.LONETILDE]}\\s+`, true)
-exports.tildeTrimReplace = '$1~'
-
-createToken('TILDE', `^${src[t.LONETILDE]}${src[t.XRANGEPLAIN]}$`)
-createToken('TILDELOOSE', `^${src[t.LONETILDE]}${src[t.XRANGEPLAINLOOSE]}$`)
-
-// Caret ranges.
-// Meaning is "at least and backwards compatible with"
-createToken('LONECARET', '(?:\\^)')
-
-createToken('CARETTRIM', `(\\s*)${src[t.LONECARET]}\\s+`, true)
-exports.caretTrimReplace = '$1^'
-
-createToken('CARET', `^${src[t.LONECARET]}${src[t.XRANGEPLAIN]}$`)
-createToken('CARETLOOSE', `^${src[t.LONECARET]}${src[t.XRANGEPLAINLOOSE]}$`)
-
-// A simple gt/lt/eq thing, or just "" to indicate "any version"
-createToken('COMPARATORLOOSE', `^${src[t.GTLT]}\\s*(${src[t.LOOSEPLAIN]})$|^$`)
-createToken('COMPARATOR', `^${src[t.GTLT]}\\s*(${src[t.FULLPLAIN]})$|^$`)
-
-// An expression to strip any whitespace between the gtlt and the thing
-// it modifies, so that `> 1.2.3` ==> `>1.2.3`
-createToken('COMPARATORTRIM', `(\\s*)${src[t.GTLT]
-}\\s*(${src[t.LOOSEPLAIN]}|${src[t.XRANGEPLAIN]})`, true)
-exports.comparatorTrimReplace = '$1$2$3'
-
-// Something like `1.2.3 - 1.2.4`
-// Note that these all use the loose form, because they'll be
-// checked against either the strict or loose comparator form
-// later.
-createToken('HYPHENRANGE', `^\\s*(${src[t.XRANGEPLAIN]})` +
-                   `\\s+-\\s+` +
-                   `(${src[t.XRANGEPLAIN]})` +
-                   `\\s*$`)
-
-createToken('HYPHENRANGELOOSE', `^\\s*(${src[t.XRANGEPLAINLOOSE]})` +
-                        `\\s+-\\s+` +
-                        `(${src[t.XRANGEPLAINLOOSE]})` +
-                        `\\s*$`)
-
-// Star ranges basically just allow anything at all.
-createToken('STAR', '(<|>)?=?\\s*\\*')
-// >=0.0.0 is like a star
-createToken('GTE0', '^\\s*>=\\s*0\\.0\\.0\\s*$')
-createToken('GTE0PRE', '^\\s*>=\\s*0\\.0\\.0-0\\s*$')
-
-
-/***/ }),
-
 /***/ "./node_modules/vscode-jsonrpc/browser.js":
 /*!************************************************!*\
   !*** ./node_modules/vscode-jsonrpc/browser.js ***!
@@ -5773,465 +4127,6 @@ exports.SharedArrayReceiverStrategy = SharedArrayReceiverStrategy;
 
 /***/ }),
 
-/***/ "./node_modules/vscode-jsonrpc/lib/node/main.js":
-/*!******************************************************!*\
-  !*** ./node_modules/vscode-jsonrpc/lib/node/main.js ***!
-  \******************************************************/
-/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
-
-"use strict";
-/* provided dependency */ var process = __webpack_require__(/*! process/browser */ "./node_modules/process/browser.js");
-
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __exportStar = (this && this.__exportStar) || function(m, exports) {
-    for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
-};
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.createMessageConnection = exports.createServerSocketTransport = exports.createClientSocketTransport = exports.createServerPipeTransport = exports.createClientPipeTransport = exports.generateRandomPipeName = exports.StreamMessageWriter = exports.StreamMessageReader = exports.SocketMessageWriter = exports.SocketMessageReader = exports.PortMessageWriter = exports.PortMessageReader = exports.IPCMessageWriter = exports.IPCMessageReader = void 0;
-/* --------------------------------------------------------------------------------------------
- * Copyright (c) Microsoft Corporation. All rights reserved.
- * Licensed under the MIT License. See License.txt in the project root for license information.
- * ----------------------------------------------------------------------------------------- */
-const ril_1 = __webpack_require__(/*! ./ril */ "./node_modules/vscode-jsonrpc/lib/node/ril.js");
-// Install the node runtime abstract.
-ril_1.default.install();
-const path = __webpack_require__(/*! path */ "path");
-const os = __webpack_require__(/*! os */ "os");
-const crypto_1 = __webpack_require__(/*! crypto */ "crypto");
-const net_1 = __webpack_require__(/*! net */ "net");
-const api_1 = __webpack_require__(/*! ../common/api */ "./node_modules/vscode-jsonrpc/lib/common/api.js");
-__exportStar(__webpack_require__(/*! ../common/api */ "./node_modules/vscode-jsonrpc/lib/common/api.js"), exports);
-class IPCMessageReader extends api_1.AbstractMessageReader {
-    constructor(process) {
-        super();
-        this.process = process;
-        let eventEmitter = this.process;
-        eventEmitter.on('error', (error) => this.fireError(error));
-        eventEmitter.on('close', () => this.fireClose());
-    }
-    listen(callback) {
-        this.process.on('message', callback);
-        return api_1.Disposable.create(() => this.process.off('message', callback));
-    }
-}
-exports.IPCMessageReader = IPCMessageReader;
-class IPCMessageWriter extends api_1.AbstractMessageWriter {
-    constructor(process) {
-        super();
-        this.process = process;
-        this.errorCount = 0;
-        const eventEmitter = this.process;
-        eventEmitter.on('error', (error) => this.fireError(error));
-        eventEmitter.on('close', () => this.fireClose);
-    }
-    write(msg) {
-        try {
-            if (typeof this.process.send === 'function') {
-                this.process.send(msg, undefined, undefined, (error) => {
-                    if (error) {
-                        this.errorCount++;
-                        this.handleError(error, msg);
-                    }
-                    else {
-                        this.errorCount = 0;
-                    }
-                });
-            }
-            return Promise.resolve();
-        }
-        catch (error) {
-            this.handleError(error, msg);
-            return Promise.reject(error);
-        }
-    }
-    handleError(error, msg) {
-        this.errorCount++;
-        this.fireError(error, msg, this.errorCount);
-    }
-    end() {
-    }
-}
-exports.IPCMessageWriter = IPCMessageWriter;
-class PortMessageReader extends api_1.AbstractMessageReader {
-    constructor(port) {
-        super();
-        this.onData = new api_1.Emitter;
-        port.on('close', () => this.fireClose);
-        port.on('error', (error) => this.fireError(error));
-        port.on('message', (message) => {
-            this.onData.fire(message);
-        });
-    }
-    listen(callback) {
-        return this.onData.event(callback);
-    }
-}
-exports.PortMessageReader = PortMessageReader;
-class PortMessageWriter extends api_1.AbstractMessageWriter {
-    constructor(port) {
-        super();
-        this.port = port;
-        this.errorCount = 0;
-        port.on('close', () => this.fireClose());
-        port.on('error', (error) => this.fireError(error));
-    }
-    write(msg) {
-        try {
-            this.port.postMessage(msg);
-            return Promise.resolve();
-        }
-        catch (error) {
-            this.handleError(error, msg);
-            return Promise.reject(error);
-        }
-    }
-    handleError(error, msg) {
-        this.errorCount++;
-        this.fireError(error, msg, this.errorCount);
-    }
-    end() {
-    }
-}
-exports.PortMessageWriter = PortMessageWriter;
-class SocketMessageReader extends api_1.ReadableStreamMessageReader {
-    constructor(socket, encoding = 'utf-8') {
-        super((0, ril_1.default)().stream.asReadableStream(socket), encoding);
-    }
-}
-exports.SocketMessageReader = SocketMessageReader;
-class SocketMessageWriter extends api_1.WriteableStreamMessageWriter {
-    constructor(socket, options) {
-        super((0, ril_1.default)().stream.asWritableStream(socket), options);
-        this.socket = socket;
-    }
-    dispose() {
-        super.dispose();
-        this.socket.destroy();
-    }
-}
-exports.SocketMessageWriter = SocketMessageWriter;
-class StreamMessageReader extends api_1.ReadableStreamMessageReader {
-    constructor(readable, encoding) {
-        super((0, ril_1.default)().stream.asReadableStream(readable), encoding);
-    }
-}
-exports.StreamMessageReader = StreamMessageReader;
-class StreamMessageWriter extends api_1.WriteableStreamMessageWriter {
-    constructor(writable, options) {
-        super((0, ril_1.default)().stream.asWritableStream(writable), options);
-    }
-}
-exports.StreamMessageWriter = StreamMessageWriter;
-const XDG_RUNTIME_DIR = process.env['XDG_RUNTIME_DIR'];
-const safeIpcPathLengths = new Map([
-    ['linux', 107],
-    ['darwin', 103]
-]);
-function generateRandomPipeName() {
-    const randomSuffix = (0, crypto_1.randomBytes)(21).toString('hex');
-    if (process.platform === 'win32') {
-        return `\\\\.\\pipe\\vscode-jsonrpc-${randomSuffix}-sock`;
-    }
-    let result;
-    if (XDG_RUNTIME_DIR) {
-        result = path.join(XDG_RUNTIME_DIR, `vscode-ipc-${randomSuffix}.sock`);
-    }
-    else {
-        result = path.join(os.tmpdir(), `vscode-${randomSuffix}.sock`);
-    }
-    const limit = safeIpcPathLengths.get(process.platform);
-    if (limit !== undefined && result.length > limit) {
-        (0, ril_1.default)().console.warn(`WARNING: IPC handle "${result}" is longer than ${limit} characters.`);
-    }
-    return result;
-}
-exports.generateRandomPipeName = generateRandomPipeName;
-function createClientPipeTransport(pipeName, encoding = 'utf-8') {
-    let connectResolve;
-    const connected = new Promise((resolve, _reject) => {
-        connectResolve = resolve;
-    });
-    return new Promise((resolve, reject) => {
-        let server = (0, net_1.createServer)((socket) => {
-            server.close();
-            connectResolve([
-                new SocketMessageReader(socket, encoding),
-                new SocketMessageWriter(socket, encoding)
-            ]);
-        });
-        server.on('error', reject);
-        server.listen(pipeName, () => {
-            server.removeListener('error', reject);
-            resolve({
-                onConnected: () => { return connected; }
-            });
-        });
-    });
-}
-exports.createClientPipeTransport = createClientPipeTransport;
-function createServerPipeTransport(pipeName, encoding = 'utf-8') {
-    const socket = (0, net_1.createConnection)(pipeName);
-    return [
-        new SocketMessageReader(socket, encoding),
-        new SocketMessageWriter(socket, encoding)
-    ];
-}
-exports.createServerPipeTransport = createServerPipeTransport;
-function createClientSocketTransport(port, encoding = 'utf-8') {
-    let connectResolve;
-    const connected = new Promise((resolve, _reject) => {
-        connectResolve = resolve;
-    });
-    return new Promise((resolve, reject) => {
-        const server = (0, net_1.createServer)((socket) => {
-            server.close();
-            connectResolve([
-                new SocketMessageReader(socket, encoding),
-                new SocketMessageWriter(socket, encoding)
-            ]);
-        });
-        server.on('error', reject);
-        server.listen(port, '127.0.0.1', () => {
-            server.removeListener('error', reject);
-            resolve({
-                onConnected: () => { return connected; }
-            });
-        });
-    });
-}
-exports.createClientSocketTransport = createClientSocketTransport;
-function createServerSocketTransport(port, encoding = 'utf-8') {
-    const socket = (0, net_1.createConnection)(port, '127.0.0.1');
-    return [
-        new SocketMessageReader(socket, encoding),
-        new SocketMessageWriter(socket, encoding)
-    ];
-}
-exports.createServerSocketTransport = createServerSocketTransport;
-function isReadableStream(value) {
-    const candidate = value;
-    return candidate.read !== undefined && candidate.addListener !== undefined;
-}
-function isWritableStream(value) {
-    const candidate = value;
-    return candidate.write !== undefined && candidate.addListener !== undefined;
-}
-function createMessageConnection(input, output, logger, options) {
-    if (!logger) {
-        logger = api_1.NullLogger;
-    }
-    const reader = isReadableStream(input) ? new StreamMessageReader(input) : input;
-    const writer = isWritableStream(output) ? new StreamMessageWriter(output) : output;
-    if (api_1.ConnectionStrategy.is(options)) {
-        options = { connectionStrategy: options };
-    }
-    return (0, api_1.createMessageConnection)(reader, writer, logger, options);
-}
-exports.createMessageConnection = createMessageConnection;
-
-
-/***/ }),
-
-/***/ "./node_modules/vscode-jsonrpc/lib/node/ril.js":
-/*!*****************************************************!*\
-  !*** ./node_modules/vscode-jsonrpc/lib/node/ril.js ***!
-  \*****************************************************/
-/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
-
-"use strict";
-/* provided dependency */ var Buffer = __webpack_require__(/*! buffer */ "buffer")["Buffer"];
-
-/* --------------------------------------------------------------------------------------------
- * Copyright (c) Microsoft Corporation. All rights reserved.
- * Licensed under the MIT License. See License.txt in the project root for license information.
- * ------------------------------------------------------------------------------------------ */
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-const util_1 = __webpack_require__(/*! util */ "util");
-const api_1 = __webpack_require__(/*! ../common/api */ "./node_modules/vscode-jsonrpc/lib/common/api.js");
-class MessageBuffer extends api_1.AbstractMessageBuffer {
-    constructor(encoding = 'utf-8') {
-        super(encoding);
-    }
-    emptyBuffer() {
-        return MessageBuffer.emptyBuffer;
-    }
-    fromString(value, encoding) {
-        return Buffer.from(value, encoding);
-    }
-    toString(value, encoding) {
-        if (value instanceof Buffer) {
-            return value.toString(encoding);
-        }
-        else {
-            return new util_1.TextDecoder(encoding).decode(value);
-        }
-    }
-    asNative(buffer, length) {
-        if (length === undefined) {
-            return buffer instanceof Buffer ? buffer : Buffer.from(buffer);
-        }
-        else {
-            return buffer instanceof Buffer ? buffer.slice(0, length) : Buffer.from(buffer, 0, length);
-        }
-    }
-    allocNative(length) {
-        return Buffer.allocUnsafe(length);
-    }
-}
-MessageBuffer.emptyBuffer = Buffer.allocUnsafe(0);
-class ReadableStreamWrapper {
-    constructor(stream) {
-        this.stream = stream;
-    }
-    onClose(listener) {
-        this.stream.on('close', listener);
-        return api_1.Disposable.create(() => this.stream.off('close', listener));
-    }
-    onError(listener) {
-        this.stream.on('error', listener);
-        return api_1.Disposable.create(() => this.stream.off('error', listener));
-    }
-    onEnd(listener) {
-        this.stream.on('end', listener);
-        return api_1.Disposable.create(() => this.stream.off('end', listener));
-    }
-    onData(listener) {
-        this.stream.on('data', listener);
-        return api_1.Disposable.create(() => this.stream.off('data', listener));
-    }
-}
-class WritableStreamWrapper {
-    constructor(stream) {
-        this.stream = stream;
-    }
-    onClose(listener) {
-        this.stream.on('close', listener);
-        return api_1.Disposable.create(() => this.stream.off('close', listener));
-    }
-    onError(listener) {
-        this.stream.on('error', listener);
-        return api_1.Disposable.create(() => this.stream.off('error', listener));
-    }
-    onEnd(listener) {
-        this.stream.on('end', listener);
-        return api_1.Disposable.create(() => this.stream.off('end', listener));
-    }
-    write(data, encoding) {
-        return new Promise((resolve, reject) => {
-            const callback = (error) => {
-                if (error === undefined || error === null) {
-                    resolve();
-                }
-                else {
-                    reject(error);
-                }
-            };
-            if (typeof data === 'string') {
-                this.stream.write(data, encoding, callback);
-            }
-            else {
-                this.stream.write(data, callback);
-            }
-        });
-    }
-    end() {
-        this.stream.end();
-    }
-}
-const _ril = Object.freeze({
-    messageBuffer: Object.freeze({
-        create: (encoding) => new MessageBuffer(encoding)
-    }),
-    applicationJson: Object.freeze({
-        encoder: Object.freeze({
-            name: 'application/json',
-            encode: (msg, options) => {
-                try {
-                    return Promise.resolve(Buffer.from(JSON.stringify(msg, undefined, 0), options.charset));
-                }
-                catch (err) {
-                    return Promise.reject(err);
-                }
-            }
-        }),
-        decoder: Object.freeze({
-            name: 'application/json',
-            decode: (buffer, options) => {
-                try {
-                    if (buffer instanceof Buffer) {
-                        return Promise.resolve(JSON.parse(buffer.toString(options.charset)));
-                    }
-                    else {
-                        return Promise.resolve(JSON.parse(new util_1.TextDecoder(options.charset).decode(buffer)));
-                    }
-                }
-                catch (err) {
-                    return Promise.reject(err);
-                }
-            }
-        })
-    }),
-    stream: Object.freeze({
-        asReadableStream: (stream) => new ReadableStreamWrapper(stream),
-        asWritableStream: (stream) => new WritableStreamWrapper(stream)
-    }),
-    console: console,
-    timer: Object.freeze({
-        setTimeout(callback, ms, ...args) {
-            const handle = setTimeout(callback, ms, ...args);
-            return { dispose: () => clearTimeout(handle) };
-        },
-        setImmediate(callback, ...args) {
-            const handle = setImmediate(callback, ...args);
-            return { dispose: () => clearImmediate(handle) };
-        },
-        setInterval(callback, ms, ...args) {
-            const handle = setInterval(callback, ms, ...args);
-            return { dispose: () => clearInterval(handle) };
-        }
-    })
-});
-function RIL() {
-    return _ril;
-}
-(function (RIL) {
-    function install() {
-        api_1.RAL.install(_ril);
-    }
-    RIL.install = install;
-})(RIL || (RIL = {}));
-exports["default"] = RIL;
-
-
-/***/ }),
-
-/***/ "./node_modules/vscode-jsonrpc/node.js":
-/*!*********************************************!*\
-  !*** ./node_modules/vscode-jsonrpc/node.js ***!
-  \*********************************************/
-/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
-
-"use strict";
-/* --------------------------------------------------------------------------------------------
- * Copyright (c) Microsoft Corporation. All rights reserved.
- * Licensed under the MIT License. See License.txt in the project root for license information.
- * ----------------------------------------------------------------------------------------- */
-
-
-module.exports = __webpack_require__(/*! ./lib/node/main */ "./node_modules/vscode-jsonrpc/lib/node/main.js");
-
-/***/ }),
-
 /***/ "./node_modules/vscode-languageclient/browser.js":
 /*!*******************************************************!*\
   !*** ./node_modules/vscode-languageclient/browser.js ***!
@@ -6325,7 +4220,7 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.DiagnosticPullMode = exports.vsdiag = void 0;
-__exportStar(__webpack_require__(/*! vscode-languageserver-protocol */ "./node_modules/vscode-languageserver-protocol/lib/node/main.js"), exports);
+__exportStar(__webpack_require__(/*! vscode-languageserver-protocol */ "./node_modules/vscode-languageserver-protocol/lib/browser/main.js"), exports);
 __exportStar(__webpack_require__(/*! ./features */ "./node_modules/vscode-languageclient/lib/common/features.js"), exports);
 var diagnostic_1 = __webpack_require__(/*! ./diagnostic */ "./node_modules/vscode-languageclient/lib/common/diagnostic.js");
 Object.defineProperty(exports, "vsdiag", ({ enumerable: true, get: function () { return diagnostic_1.vsdiag; } }));
@@ -6350,7 +4245,7 @@ __exportStar(__webpack_require__(/*! ./client */ "./node_modules/vscode-language
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.CallHierarchyFeature = void 0;
 const vscode_1 = __webpack_require__(/*! vscode */ "vscode");
-const vscode_languageserver_protocol_1 = __webpack_require__(/*! vscode-languageserver-protocol */ "./node_modules/vscode-languageserver-protocol/lib/node/main.js");
+const vscode_languageserver_protocol_1 = __webpack_require__(/*! vscode-languageserver-protocol */ "./node_modules/vscode-languageserver-protocol/lib/browser/main.js");
 const features_1 = __webpack_require__(/*! ./features */ "./node_modules/vscode-languageclient/lib/common/features.js");
 class CallHierarchyProvider {
     constructor(client) {
@@ -6458,7 +4353,7 @@ exports.CallHierarchyFeature = CallHierarchyFeature;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.ProposedFeatures = exports.BaseLanguageClient = exports.MessageTransports = exports.SuspendMode = exports.State = exports.CloseAction = exports.ErrorAction = exports.RevealOutputChannelOn = void 0;
 const vscode_1 = __webpack_require__(/*! vscode */ "vscode");
-const vscode_languageserver_protocol_1 = __webpack_require__(/*! vscode-languageserver-protocol */ "./node_modules/vscode-languageserver-protocol/lib/node/main.js");
+const vscode_languageserver_protocol_1 = __webpack_require__(/*! vscode-languageserver-protocol */ "./node_modules/vscode-languageserver-protocol/lib/browser/main.js");
 const c2p = __webpack_require__(/*! ./codeConverter */ "./node_modules/vscode-languageclient/lib/common/codeConverter.js");
 const p2c = __webpack_require__(/*! ./protocolConverter */ "./node_modules/vscode-languageclient/lib/common/protocolConverter.js");
 const Is = __webpack_require__(/*! ./utils/is */ "./node_modules/vscode-languageclient/lib/common/utils/is.js");
@@ -7995,7 +5890,7 @@ var ProposedFeatures;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.CodeActionFeature = void 0;
 const vscode_1 = __webpack_require__(/*! vscode */ "vscode");
-const vscode_languageserver_protocol_1 = __webpack_require__(/*! vscode-languageserver-protocol */ "./node_modules/vscode-languageserver-protocol/lib/node/main.js");
+const vscode_languageserver_protocol_1 = __webpack_require__(/*! vscode-languageserver-protocol */ "./node_modules/vscode-languageserver-protocol/lib/browser/main.js");
 const UUID = __webpack_require__(/*! ./utils/uuid */ "./node_modules/vscode-languageclient/lib/common/utils/uuid.js");
 const features_1 = __webpack_require__(/*! ./features */ "./node_modules/vscode-languageclient/lib/common/features.js");
 class CodeActionFeature extends features_1.TextDocumentLanguageFeature {
@@ -8105,7 +6000,7 @@ exports.CodeActionFeature = CodeActionFeature;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.createConverter = void 0;
 const code = __webpack_require__(/*! vscode */ "vscode");
-const proto = __webpack_require__(/*! vscode-languageserver-protocol */ "./node_modules/vscode-languageserver-protocol/lib/node/main.js");
+const proto = __webpack_require__(/*! vscode-languageserver-protocol */ "./node_modules/vscode-languageserver-protocol/lib/browser/main.js");
 const Is = __webpack_require__(/*! ./utils/is */ "./node_modules/vscode-languageclient/lib/common/utils/is.js");
 const async = __webpack_require__(/*! ./utils/async */ "./node_modules/vscode-languageclient/lib/common/utils/async.js");
 const protocolCompletionItem_1 = __webpack_require__(/*! ./protocolCompletionItem */ "./node_modules/vscode-languageclient/lib/common/protocolCompletionItem.js");
@@ -8935,7 +6830,7 @@ exports.createConverter = createConverter;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.CodeLensFeature = void 0;
 const vscode_1 = __webpack_require__(/*! vscode */ "vscode");
-const vscode_languageserver_protocol_1 = __webpack_require__(/*! vscode-languageserver-protocol */ "./node_modules/vscode-languageserver-protocol/lib/node/main.js");
+const vscode_languageserver_protocol_1 = __webpack_require__(/*! vscode-languageserver-protocol */ "./node_modules/vscode-languageserver-protocol/lib/browser/main.js");
 const UUID = __webpack_require__(/*! ./utils/uuid */ "./node_modules/vscode-languageclient/lib/common/utils/uuid.js");
 const features_1 = __webpack_require__(/*! ./features */ "./node_modules/vscode-languageclient/lib/common/features.js");
 class CodeLensFeature extends features_1.TextDocumentLanguageFeature {
@@ -9024,7 +6919,7 @@ exports.CodeLensFeature = CodeLensFeature;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.ColorProviderFeature = void 0;
 const vscode_1 = __webpack_require__(/*! vscode */ "vscode");
-const vscode_languageserver_protocol_1 = __webpack_require__(/*! vscode-languageserver-protocol */ "./node_modules/vscode-languageserver-protocol/lib/node/main.js");
+const vscode_languageserver_protocol_1 = __webpack_require__(/*! vscode-languageserver-protocol */ "./node_modules/vscode-languageserver-protocol/lib/browser/main.js");
 const features_1 = __webpack_require__(/*! ./features */ "./node_modules/vscode-languageclient/lib/common/features.js");
 class ColorProviderFeature extends features_1.TextDocumentLanguageFeature {
     constructor(client) {
@@ -9109,7 +7004,7 @@ exports.ColorProviderFeature = ColorProviderFeature;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.CompletionItemFeature = void 0;
 const vscode_1 = __webpack_require__(/*! vscode */ "vscode");
-const vscode_languageserver_protocol_1 = __webpack_require__(/*! vscode-languageserver-protocol */ "./node_modules/vscode-languageserver-protocol/lib/node/main.js");
+const vscode_languageserver_protocol_1 = __webpack_require__(/*! vscode-languageserver-protocol */ "./node_modules/vscode-languageserver-protocol/lib/browser/main.js");
 const features_1 = __webpack_require__(/*! ./features */ "./node_modules/vscode-languageclient/lib/common/features.js");
 const UUID = __webpack_require__(/*! ./utils/uuid */ "./node_modules/vscode-languageclient/lib/common/utils/uuid.js");
 const SupportedCompletionItemKinds = [
@@ -9246,7 +7141,7 @@ exports.CompletionItemFeature = CompletionItemFeature;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.SyncConfigurationFeature = exports.toJSONObject = exports.ConfigurationFeature = void 0;
 const vscode_1 = __webpack_require__(/*! vscode */ "vscode");
-const vscode_languageserver_protocol_1 = __webpack_require__(/*! vscode-languageserver-protocol */ "./node_modules/vscode-languageserver-protocol/lib/node/main.js");
+const vscode_languageserver_protocol_1 = __webpack_require__(/*! vscode-languageserver-protocol */ "./node_modules/vscode-languageserver-protocol/lib/browser/main.js");
 const Is = __webpack_require__(/*! ./utils/is */ "./node_modules/vscode-languageclient/lib/common/utils/is.js");
 const UUID = __webpack_require__(/*! ./utils/uuid */ "./node_modules/vscode-languageclient/lib/common/utils/uuid.js");
 const features_1 = __webpack_require__(/*! ./features */ "./node_modules/vscode-languageclient/lib/common/features.js");
@@ -9465,7 +7360,7 @@ exports.SyncConfigurationFeature = SyncConfigurationFeature;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.DeclarationFeature = void 0;
 const vscode_1 = __webpack_require__(/*! vscode */ "vscode");
-const vscode_languageserver_protocol_1 = __webpack_require__(/*! vscode-languageserver-protocol */ "./node_modules/vscode-languageserver-protocol/lib/node/main.js");
+const vscode_languageserver_protocol_1 = __webpack_require__(/*! vscode-languageserver-protocol */ "./node_modules/vscode-languageserver-protocol/lib/browser/main.js");
 const features_1 = __webpack_require__(/*! ./features */ "./node_modules/vscode-languageclient/lib/common/features.js");
 class DeclarationFeature extends features_1.TextDocumentLanguageFeature {
     constructor(client) {
@@ -9530,7 +7425,7 @@ exports.DeclarationFeature = DeclarationFeature;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.DefinitionFeature = void 0;
 const vscode_1 = __webpack_require__(/*! vscode */ "vscode");
-const vscode_languageserver_protocol_1 = __webpack_require__(/*! vscode-languageserver-protocol */ "./node_modules/vscode-languageserver-protocol/lib/node/main.js");
+const vscode_languageserver_protocol_1 = __webpack_require__(/*! vscode-languageserver-protocol */ "./node_modules/vscode-languageserver-protocol/lib/browser/main.js");
 const features_1 = __webpack_require__(/*! ./features */ "./node_modules/vscode-languageclient/lib/common/features.js");
 const UUID = __webpack_require__(/*! ./utils/uuid */ "./node_modules/vscode-languageclient/lib/common/utils/uuid.js");
 class DefinitionFeature extends features_1.TextDocumentLanguageFeature {
@@ -9597,7 +7492,7 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.DiagnosticFeature = exports.DiagnosticPullMode = exports.vsdiag = void 0;
 const minimatch = __webpack_require__(/*! minimatch */ "./node_modules/vscode-languageclient/node_modules/minimatch/minimatch.js");
 const vscode_1 = __webpack_require__(/*! vscode */ "vscode");
-const vscode_languageserver_protocol_1 = __webpack_require__(/*! vscode-languageserver-protocol */ "./node_modules/vscode-languageserver-protocol/lib/node/main.js");
+const vscode_languageserver_protocol_1 = __webpack_require__(/*! vscode-languageserver-protocol */ "./node_modules/vscode-languageserver-protocol/lib/browser/main.js");
 const uuid_1 = __webpack_require__(/*! ./utils/uuid */ "./node_modules/vscode-languageclient/lib/common/utils/uuid.js");
 const features_1 = __webpack_require__(/*! ./features */ "./node_modules/vscode-languageclient/lib/common/features.js");
 function ensure(target, key) {
@@ -10415,7 +8310,7 @@ exports.DiagnosticFeature = DiagnosticFeature;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.DocumentHighlightFeature = void 0;
 const vscode_1 = __webpack_require__(/*! vscode */ "vscode");
-const vscode_languageserver_protocol_1 = __webpack_require__(/*! vscode-languageserver-protocol */ "./node_modules/vscode-languageserver-protocol/lib/node/main.js");
+const vscode_languageserver_protocol_1 = __webpack_require__(/*! vscode-languageserver-protocol */ "./node_modules/vscode-languageserver-protocol/lib/browser/main.js");
 const features_1 = __webpack_require__(/*! ./features */ "./node_modules/vscode-languageclient/lib/common/features.js");
 const UUID = __webpack_require__(/*! ./utils/uuid */ "./node_modules/vscode-languageclient/lib/common/utils/uuid.js");
 class DocumentHighlightFeature extends features_1.TextDocumentLanguageFeature {
@@ -10476,7 +8371,7 @@ exports.DocumentHighlightFeature = DocumentHighlightFeature;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.DocumentLinkFeature = void 0;
 const vscode_1 = __webpack_require__(/*! vscode */ "vscode");
-const vscode_languageserver_protocol_1 = __webpack_require__(/*! vscode-languageserver-protocol */ "./node_modules/vscode-languageserver-protocol/lib/node/main.js");
+const vscode_languageserver_protocol_1 = __webpack_require__(/*! vscode-languageserver-protocol */ "./node_modules/vscode-languageserver-protocol/lib/browser/main.js");
 const features_1 = __webpack_require__(/*! ./features */ "./node_modules/vscode-languageclient/lib/common/features.js");
 const UUID = __webpack_require__(/*! ./utils/uuid */ "./node_modules/vscode-languageclient/lib/common/utils/uuid.js");
 class DocumentLinkFeature extends features_1.TextDocumentLanguageFeature {
@@ -10558,7 +8453,7 @@ exports.DocumentLinkFeature = DocumentLinkFeature;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.DocumentSymbolFeature = exports.SupportedSymbolTags = exports.SupportedSymbolKinds = void 0;
 const vscode_1 = __webpack_require__(/*! vscode */ "vscode");
-const vscode_languageserver_protocol_1 = __webpack_require__(/*! vscode-languageserver-protocol */ "./node_modules/vscode-languageserver-protocol/lib/node/main.js");
+const vscode_languageserver_protocol_1 = __webpack_require__(/*! vscode-languageserver-protocol */ "./node_modules/vscode-languageserver-protocol/lib/browser/main.js");
 const features_1 = __webpack_require__(/*! ./features */ "./node_modules/vscode-languageclient/lib/common/features.js");
 const UUID = __webpack_require__(/*! ./utils/uuid */ "./node_modules/vscode-languageclient/lib/common/utils/uuid.js");
 exports.SupportedSymbolKinds = [
@@ -10673,7 +8568,7 @@ exports.DocumentSymbolFeature = DocumentSymbolFeature;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.ExecuteCommandFeature = void 0;
 const vscode_1 = __webpack_require__(/*! vscode */ "vscode");
-const vscode_languageserver_protocol_1 = __webpack_require__(/*! vscode-languageserver-protocol */ "./node_modules/vscode-languageserver-protocol/lib/node/main.js");
+const vscode_languageserver_protocol_1 = __webpack_require__(/*! vscode-languageserver-protocol */ "./node_modules/vscode-languageserver-protocol/lib/browser/main.js");
 const UUID = __webpack_require__(/*! ./utils/uuid */ "./node_modules/vscode-languageclient/lib/common/utils/uuid.js");
 const features_1 = __webpack_require__(/*! ./features */ "./node_modules/vscode-languageclient/lib/common/features.js");
 class ExecuteCommandFeature {
@@ -10756,7 +8651,7 @@ exports.ExecuteCommandFeature = ExecuteCommandFeature;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.WorkspaceFeature = exports.TextDocumentLanguageFeature = exports.TextDocumentEventFeature = exports.DynamicDocumentFeature = exports.DynamicFeature = exports.StaticFeature = exports.ensure = exports.LSPCancellationError = void 0;
 const vscode_1 = __webpack_require__(/*! vscode */ "vscode");
-const vscode_languageserver_protocol_1 = __webpack_require__(/*! vscode-languageserver-protocol */ "./node_modules/vscode-languageserver-protocol/lib/node/main.js");
+const vscode_languageserver_protocol_1 = __webpack_require__(/*! vscode-languageserver-protocol */ "./node_modules/vscode-languageserver-protocol/lib/browser/main.js");
 const Is = __webpack_require__(/*! ./utils/is */ "./node_modules/vscode-languageclient/lib/common/utils/is.js");
 const UUID = __webpack_require__(/*! ./utils/uuid */ "./node_modules/vscode-languageclient/lib/common/utils/uuid.js");
 class LSPCancellationError extends vscode_1.CancellationError {
@@ -11059,7 +8954,7 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.WillDeleteFilesFeature = exports.WillRenameFilesFeature = exports.WillCreateFilesFeature = exports.DidDeleteFilesFeature = exports.DidRenameFilesFeature = exports.DidCreateFilesFeature = void 0;
 const code = __webpack_require__(/*! vscode */ "vscode");
 const minimatch = __webpack_require__(/*! minimatch */ "./node_modules/vscode-languageclient/node_modules/minimatch/minimatch.js");
-const proto = __webpack_require__(/*! vscode-languageserver-protocol */ "./node_modules/vscode-languageserver-protocol/lib/node/main.js");
+const proto = __webpack_require__(/*! vscode-languageserver-protocol */ "./node_modules/vscode-languageserver-protocol/lib/browser/main.js");
 const UUID = __webpack_require__(/*! ./utils/uuid */ "./node_modules/vscode-languageclient/lib/common/utils/uuid.js");
 function ensure(target, key) {
     if (target[key] === void 0) {
@@ -11402,7 +9297,7 @@ exports.WillDeleteFilesFeature = WillDeleteFilesFeature;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.FileSystemWatcherFeature = void 0;
 const vscode_1 = __webpack_require__(/*! vscode */ "vscode");
-const vscode_languageserver_protocol_1 = __webpack_require__(/*! vscode-languageserver-protocol */ "./node_modules/vscode-languageserver-protocol/lib/node/main.js");
+const vscode_languageserver_protocol_1 = __webpack_require__(/*! vscode-languageserver-protocol */ "./node_modules/vscode-languageserver-protocol/lib/browser/main.js");
 const features_1 = __webpack_require__(/*! ./features */ "./node_modules/vscode-languageclient/lib/common/features.js");
 class FileSystemWatcherFeature {
     constructor(client, notifyFileEvent) {
@@ -11508,7 +9403,7 @@ exports.FileSystemWatcherFeature = FileSystemWatcherFeature;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.FoldingRangeFeature = void 0;
 const vscode_1 = __webpack_require__(/*! vscode */ "vscode");
-const vscode_languageserver_protocol_1 = __webpack_require__(/*! vscode-languageserver-protocol */ "./node_modules/vscode-languageserver-protocol/lib/node/main.js");
+const vscode_languageserver_protocol_1 = __webpack_require__(/*! vscode-languageserver-protocol */ "./node_modules/vscode-languageserver-protocol/lib/browser/main.js");
 const features_1 = __webpack_require__(/*! ./features */ "./node_modules/vscode-languageclient/lib/common/features.js");
 class FoldingRangeFeature extends features_1.TextDocumentLanguageFeature {
     constructor(client) {
@@ -11576,7 +9471,7 @@ exports.FoldingRangeFeature = FoldingRangeFeature;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.DocumentOnTypeFormattingFeature = exports.DocumentRangeFormattingFeature = exports.DocumentFormattingFeature = void 0;
 const vscode_1 = __webpack_require__(/*! vscode */ "vscode");
-const vscode_languageserver_protocol_1 = __webpack_require__(/*! vscode-languageserver-protocol */ "./node_modules/vscode-languageserver-protocol/lib/node/main.js");
+const vscode_languageserver_protocol_1 = __webpack_require__(/*! vscode-languageserver-protocol */ "./node_modules/vscode-languageserver-protocol/lib/browser/main.js");
 const UUID = __webpack_require__(/*! ./utils/uuid */ "./node_modules/vscode-languageclient/lib/common/utils/uuid.js");
 const features_1 = __webpack_require__(/*! ./features */ "./node_modules/vscode-languageclient/lib/common/features.js");
 var FileFormattingOptions;
@@ -11743,7 +9638,7 @@ exports.DocumentOnTypeFormattingFeature = DocumentOnTypeFormattingFeature;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.HoverFeature = void 0;
 const vscode_1 = __webpack_require__(/*! vscode */ "vscode");
-const vscode_languageserver_protocol_1 = __webpack_require__(/*! vscode-languageserver-protocol */ "./node_modules/vscode-languageserver-protocol/lib/node/main.js");
+const vscode_languageserver_protocol_1 = __webpack_require__(/*! vscode-languageserver-protocol */ "./node_modules/vscode-languageserver-protocol/lib/browser/main.js");
 const features_1 = __webpack_require__(/*! ./features */ "./node_modules/vscode-languageclient/lib/common/features.js");
 const UUID = __webpack_require__(/*! ./utils/uuid */ "./node_modules/vscode-languageclient/lib/common/utils/uuid.js");
 class HoverFeature extends features_1.TextDocumentLanguageFeature {
@@ -11812,7 +9707,7 @@ exports.HoverFeature = HoverFeature;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.ImplementationFeature = void 0;
 const vscode_1 = __webpack_require__(/*! vscode */ "vscode");
-const vscode_languageserver_protocol_1 = __webpack_require__(/*! vscode-languageserver-protocol */ "./node_modules/vscode-languageserver-protocol/lib/node/main.js");
+const vscode_languageserver_protocol_1 = __webpack_require__(/*! vscode-languageserver-protocol */ "./node_modules/vscode-languageserver-protocol/lib/browser/main.js");
 const features_1 = __webpack_require__(/*! ./features */ "./node_modules/vscode-languageclient/lib/common/features.js");
 class ImplementationFeature extends features_1.TextDocumentLanguageFeature {
     constructor(client) {
@@ -11877,7 +9772,7 @@ exports.ImplementationFeature = ImplementationFeature;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.InlayHintsFeature = void 0;
 const vscode_1 = __webpack_require__(/*! vscode */ "vscode");
-const vscode_languageserver_protocol_1 = __webpack_require__(/*! vscode-languageserver-protocol */ "./node_modules/vscode-languageserver-protocol/lib/node/main.js");
+const vscode_languageserver_protocol_1 = __webpack_require__(/*! vscode-languageserver-protocol */ "./node_modules/vscode-languageserver-protocol/lib/browser/main.js");
 const features_1 = __webpack_require__(/*! ./features */ "./node_modules/vscode-languageclient/lib/common/features.js");
 class InlayHintsFeature extends features_1.TextDocumentLanguageFeature {
     constructor(client) {
@@ -11980,7 +9875,7 @@ exports.InlayHintsFeature = InlayHintsFeature;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.InlineValueFeature = void 0;
 const vscode_1 = __webpack_require__(/*! vscode */ "vscode");
-const vscode_languageserver_protocol_1 = __webpack_require__(/*! vscode-languageserver-protocol */ "./node_modules/vscode-languageserver-protocol/lib/node/main.js");
+const vscode_languageserver_protocol_1 = __webpack_require__(/*! vscode-languageserver-protocol */ "./node_modules/vscode-languageserver-protocol/lib/browser/main.js");
 const features_1 = __webpack_require__(/*! ./features */ "./node_modules/vscode-languageclient/lib/common/features.js");
 class InlineValueFeature extends features_1.TextDocumentLanguageFeature {
     constructor(client) {
@@ -12056,7 +9951,7 @@ exports.InlineValueFeature = InlineValueFeature;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.LinkedEditingFeature = void 0;
 const code = __webpack_require__(/*! vscode */ "vscode");
-const proto = __webpack_require__(/*! vscode-languageserver-protocol */ "./node_modules/vscode-languageserver-protocol/lib/node/main.js");
+const proto = __webpack_require__(/*! vscode-languageserver-protocol */ "./node_modules/vscode-languageserver-protocol/lib/browser/main.js");
 const features_1 = __webpack_require__(/*! ./features */ "./node_modules/vscode-languageclient/lib/common/features.js");
 class LinkedEditingFeature extends features_1.TextDocumentLanguageFeature {
     constructor(client) {
@@ -12121,7 +10016,7 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.NotebookDocumentSyncFeature = void 0;
 const vscode = __webpack_require__(/*! vscode */ "vscode");
 const minimatch = __webpack_require__(/*! minimatch */ "./node_modules/vscode-languageclient/node_modules/minimatch/minimatch.js");
-const proto = __webpack_require__(/*! vscode-languageserver-protocol */ "./node_modules/vscode-languageserver-protocol/lib/node/main.js");
+const proto = __webpack_require__(/*! vscode-languageserver-protocol */ "./node_modules/vscode-languageserver-protocol/lib/browser/main.js");
 const UUID = __webpack_require__(/*! ./utils/uuid */ "./node_modules/vscode-languageclient/lib/common/utils/uuid.js");
 const Is = __webpack_require__(/*! ./utils/is */ "./node_modules/vscode-languageclient/lib/common/utils/is.js");
 function ensure(target, key) {
@@ -12981,7 +10876,7 @@ NotebookDocumentSyncFeature.CellScheme = 'vscode-notebook-cell';
  * ------------------------------------------------------------------------------------------ */
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.ProgressFeature = void 0;
-const vscode_languageserver_protocol_1 = __webpack_require__(/*! vscode-languageserver-protocol */ "./node_modules/vscode-languageserver-protocol/lib/node/main.js");
+const vscode_languageserver_protocol_1 = __webpack_require__(/*! vscode-languageserver-protocol */ "./node_modules/vscode-languageserver-protocol/lib/browser/main.js");
 const progressPart_1 = __webpack_require__(/*! ./progressPart */ "./node_modules/vscode-languageclient/lib/common/progressPart.js");
 function ensure(target, key) {
     if (target[key] === void 0) {
@@ -13037,7 +10932,7 @@ exports.ProgressFeature = ProgressFeature;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.ProgressPart = void 0;
 const vscode_1 = __webpack_require__(/*! vscode */ "vscode");
-const vscode_languageserver_protocol_1 = __webpack_require__(/*! vscode-languageserver-protocol */ "./node_modules/vscode-languageserver-protocol/lib/node/main.js");
+const vscode_languageserver_protocol_1 = __webpack_require__(/*! vscode-languageserver-protocol */ "./node_modules/vscode-languageserver-protocol/lib/browser/main.js");
 const Is = __webpack_require__(/*! ./utils/is */ "./node_modules/vscode-languageclient/lib/common/utils/is.js");
 class ProgressPart {
     constructor(_client, _token, done) {
@@ -13244,7 +11139,7 @@ exports["default"] = ProtocolCompletionItem;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.createConverter = void 0;
 const code = __webpack_require__(/*! vscode */ "vscode");
-const ls = __webpack_require__(/*! vscode-languageserver-protocol */ "./node_modules/vscode-languageserver-protocol/lib/node/main.js");
+const ls = __webpack_require__(/*! vscode-languageserver-protocol */ "./node_modules/vscode-languageserver-protocol/lib/browser/main.js");
 const Is = __webpack_require__(/*! ./utils/is */ "./node_modules/vscode-languageclient/lib/common/utils/is.js");
 const async = __webpack_require__(/*! ./utils/async */ "./node_modules/vscode-languageclient/lib/common/utils/async.js");
 const protocolCompletionItem_1 = __webpack_require__(/*! ./protocolCompletionItem */ "./node_modules/vscode-languageclient/lib/common/protocolCompletionItem.js");
@@ -13256,7 +11151,7 @@ const protocolCallHierarchyItem_1 = __webpack_require__(/*! ./protocolCallHierar
 const protocolTypeHierarchyItem_1 = __webpack_require__(/*! ./protocolTypeHierarchyItem */ "./node_modules/vscode-languageclient/lib/common/protocolTypeHierarchyItem.js");
 const protocolWorkspaceSymbol_1 = __webpack_require__(/*! ./protocolWorkspaceSymbol */ "./node_modules/vscode-languageclient/lib/common/protocolWorkspaceSymbol.js");
 const protocolInlayHint_1 = __webpack_require__(/*! ./protocolInlayHint */ "./node_modules/vscode-languageclient/lib/common/protocolInlayHint.js");
-const vscode_languageserver_protocol_1 = __webpack_require__(/*! vscode-languageserver-protocol */ "./node_modules/vscode-languageserver-protocol/lib/node/main.js");
+const vscode_languageserver_protocol_1 = __webpack_require__(/*! vscode-languageserver-protocol */ "./node_modules/vscode-languageserver-protocol/lib/browser/main.js");
 var CodeBlock;
 (function (CodeBlock) {
     function is(value) {
@@ -14496,7 +12391,7 @@ exports["default"] = WorkspaceSymbol;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.ReferencesFeature = void 0;
 const vscode_1 = __webpack_require__(/*! vscode */ "vscode");
-const vscode_languageserver_protocol_1 = __webpack_require__(/*! vscode-languageserver-protocol */ "./node_modules/vscode-languageserver-protocol/lib/node/main.js");
+const vscode_languageserver_protocol_1 = __webpack_require__(/*! vscode-languageserver-protocol */ "./node_modules/vscode-languageserver-protocol/lib/browser/main.js");
 const features_1 = __webpack_require__(/*! ./features */ "./node_modules/vscode-languageclient/lib/common/features.js");
 const UUID = __webpack_require__(/*! ./utils/uuid */ "./node_modules/vscode-languageclient/lib/common/utils/uuid.js");
 class ReferencesFeature extends features_1.TextDocumentLanguageFeature {
@@ -14560,7 +12455,7 @@ exports.ReferencesFeature = ReferencesFeature;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.RenameFeature = void 0;
 const vscode_1 = __webpack_require__(/*! vscode */ "vscode");
-const vscode_languageserver_protocol_1 = __webpack_require__(/*! vscode-languageserver-protocol */ "./node_modules/vscode-languageserver-protocol/lib/node/main.js");
+const vscode_languageserver_protocol_1 = __webpack_require__(/*! vscode-languageserver-protocol */ "./node_modules/vscode-languageserver-protocol/lib/browser/main.js");
 const UUID = __webpack_require__(/*! ./utils/uuid */ "./node_modules/vscode-languageclient/lib/common/utils/uuid.js");
 const Is = __webpack_require__(/*! ./utils/is */ "./node_modules/vscode-languageclient/lib/common/utils/is.js");
 const features_1 = __webpack_require__(/*! ./features */ "./node_modules/vscode-languageclient/lib/common/features.js");
@@ -14684,7 +12579,7 @@ exports.RenameFeature = RenameFeature;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.SelectionRangeFeature = void 0;
 const vscode_1 = __webpack_require__(/*! vscode */ "vscode");
-const vscode_languageserver_protocol_1 = __webpack_require__(/*! vscode-languageserver-protocol */ "./node_modules/vscode-languageserver-protocol/lib/node/main.js");
+const vscode_languageserver_protocol_1 = __webpack_require__(/*! vscode-languageserver-protocol */ "./node_modules/vscode-languageserver-protocol/lib/browser/main.js");
 const features_1 = __webpack_require__(/*! ./features */ "./node_modules/vscode-languageclient/lib/common/features.js");
 class SelectionRangeFeature extends features_1.TextDocumentLanguageFeature {
     constructor(client) {
@@ -14752,7 +12647,7 @@ exports.SelectionRangeFeature = SelectionRangeFeature;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.SemanticTokensFeature = void 0;
 const vscode = __webpack_require__(/*! vscode */ "vscode");
-const vscode_languageserver_protocol_1 = __webpack_require__(/*! vscode-languageserver-protocol */ "./node_modules/vscode-languageserver-protocol/lib/node/main.js");
+const vscode_languageserver_protocol_1 = __webpack_require__(/*! vscode-languageserver-protocol */ "./node_modules/vscode-languageserver-protocol/lib/browser/main.js");
 const features_1 = __webpack_require__(/*! ./features */ "./node_modules/vscode-languageclient/lib/common/features.js");
 const Is = __webpack_require__(/*! ./utils/is */ "./node_modules/vscode-languageclient/lib/common/utils/is.js");
 class SemanticTokensFeature extends features_1.TextDocumentLanguageFeature {
@@ -14942,7 +12837,7 @@ exports.SemanticTokensFeature = SemanticTokensFeature;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.SignatureHelpFeature = void 0;
 const vscode_1 = __webpack_require__(/*! vscode */ "vscode");
-const vscode_languageserver_protocol_1 = __webpack_require__(/*! vscode-languageserver-protocol */ "./node_modules/vscode-languageserver-protocol/lib/node/main.js");
+const vscode_languageserver_protocol_1 = __webpack_require__(/*! vscode-languageserver-protocol */ "./node_modules/vscode-languageserver-protocol/lib/browser/main.js");
 const features_1 = __webpack_require__(/*! ./features */ "./node_modules/vscode-languageclient/lib/common/features.js");
 const UUID = __webpack_require__(/*! ./utils/uuid */ "./node_modules/vscode-languageclient/lib/common/utils/uuid.js");
 class SignatureHelpFeature extends features_1.TextDocumentLanguageFeature {
@@ -15024,7 +12919,7 @@ exports.SignatureHelpFeature = SignatureHelpFeature;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.DidSaveTextDocumentFeature = exports.WillSaveWaitUntilFeature = exports.WillSaveFeature = exports.DidChangeTextDocumentFeature = exports.DidCloseTextDocumentFeature = exports.DidOpenTextDocumentFeature = void 0;
 const vscode_1 = __webpack_require__(/*! vscode */ "vscode");
-const vscode_languageserver_protocol_1 = __webpack_require__(/*! vscode-languageserver-protocol */ "./node_modules/vscode-languageserver-protocol/lib/node/main.js");
+const vscode_languageserver_protocol_1 = __webpack_require__(/*! vscode-languageserver-protocol */ "./node_modules/vscode-languageserver-protocol/lib/browser/main.js");
 const features_1 = __webpack_require__(/*! ./features */ "./node_modules/vscode-languageclient/lib/common/features.js");
 const UUID = __webpack_require__(/*! ./utils/uuid */ "./node_modules/vscode-languageclient/lib/common/utils/uuid.js");
 class DidOpenTextDocumentFeature extends features_1.TextDocumentEventFeature {
@@ -15437,7 +13332,7 @@ exports.DidSaveTextDocumentFeature = DidSaveTextDocumentFeature;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.TypeDefinitionFeature = void 0;
 const vscode_1 = __webpack_require__(/*! vscode */ "vscode");
-const vscode_languageserver_protocol_1 = __webpack_require__(/*! vscode-languageserver-protocol */ "./node_modules/vscode-languageserver-protocol/lib/node/main.js");
+const vscode_languageserver_protocol_1 = __webpack_require__(/*! vscode-languageserver-protocol */ "./node_modules/vscode-languageserver-protocol/lib/browser/main.js");
 const features_1 = __webpack_require__(/*! ./features */ "./node_modules/vscode-languageclient/lib/common/features.js");
 class TypeDefinitionFeature extends features_1.TextDocumentLanguageFeature {
     constructor(client) {
@@ -15503,7 +13398,7 @@ exports.TypeDefinitionFeature = TypeDefinitionFeature;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.TypeHierarchyFeature = void 0;
 const vscode_1 = __webpack_require__(/*! vscode */ "vscode");
-const vscode_languageserver_protocol_1 = __webpack_require__(/*! vscode-languageserver-protocol */ "./node_modules/vscode-languageserver-protocol/lib/node/main.js");
+const vscode_languageserver_protocol_1 = __webpack_require__(/*! vscode-languageserver-protocol */ "./node_modules/vscode-languageserver-protocol/lib/browser/main.js");
 const features_1 = __webpack_require__(/*! ./features */ "./node_modules/vscode-languageclient/lib/common/features.js");
 class TypeHierarchyProvider {
     constructor(client) {
@@ -15609,7 +13504,7 @@ exports.TypeHierarchyFeature = TypeHierarchyFeature;
  * ------------------------------------------------------------------------------------------ */
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.forEach = exports.mapAsync = exports.map = exports.clearTestMode = exports.setTestMode = exports.Semaphore = exports.Delayer = void 0;
-const vscode_languageserver_protocol_1 = __webpack_require__(/*! vscode-languageserver-protocol */ "./node_modules/vscode-languageserver-protocol/lib/node/main.js");
+const vscode_languageserver_protocol_1 = __webpack_require__(/*! vscode-languageserver-protocol */ "./node_modules/vscode-languageserver-protocol/lib/browser/main.js");
 class Delayer {
     constructor(defaultDelay) {
         this.defaultDelay = defaultDelay;
@@ -16074,7 +13969,7 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.WorkspaceFoldersFeature = exports.arrayDiff = void 0;
 const UUID = __webpack_require__(/*! ./utils/uuid */ "./node_modules/vscode-languageclient/lib/common/utils/uuid.js");
 const vscode_1 = __webpack_require__(/*! vscode */ "vscode");
-const vscode_languageserver_protocol_1 = __webpack_require__(/*! vscode-languageserver-protocol */ "./node_modules/vscode-languageserver-protocol/lib/node/main.js");
+const vscode_languageserver_protocol_1 = __webpack_require__(/*! vscode-languageserver-protocol */ "./node_modules/vscode-languageserver-protocol/lib/browser/main.js");
 function access(target, key) {
     if (target === undefined || target === null) {
         return undefined;
@@ -16232,7 +14127,7 @@ exports.WorkspaceFoldersFeature = WorkspaceFoldersFeature;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.WorkspaceSymbolFeature = void 0;
 const vscode_1 = __webpack_require__(/*! vscode */ "vscode");
-const vscode_languageserver_protocol_1 = __webpack_require__(/*! vscode-languageserver-protocol */ "./node_modules/vscode-languageserver-protocol/lib/node/main.js");
+const vscode_languageserver_protocol_1 = __webpack_require__(/*! vscode-languageserver-protocol */ "./node_modules/vscode-languageserver-protocol/lib/browser/main.js");
 const features_1 = __webpack_require__(/*! ./features */ "./node_modules/vscode-languageclient/lib/common/features.js");
 const documentSymbol_1 = __webpack_require__(/*! ./documentSymbol */ "./node_modules/vscode-languageclient/lib/common/documentSymbol.js");
 const UUID = __webpack_require__(/*! ./utils/uuid */ "./node_modules/vscode-languageclient/lib/common/utils/uuid.js");
@@ -16307,636 +14202,6 @@ exports.WorkspaceSymbolFeature = WorkspaceSymbolFeature;
 
 /***/ }),
 
-/***/ "./node_modules/vscode-languageclient/lib/node/main.js":
-/*!*************************************************************!*\
-  !*** ./node_modules/vscode-languageclient/lib/node/main.js ***!
-  \*************************************************************/
-/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
-
-"use strict";
-/* provided dependency */ var process = __webpack_require__(/*! process/browser */ "./node_modules/process/browser.js");
-
-/* --------------------------------------------------------------------------------------------
- * Copyright (c) Microsoft Corporation. All rights reserved.
- * Licensed under the MIT License. See License.txt in the project root for license information.
- * ------------------------------------------------------------------------------------------ */
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __exportStar = (this && this.__exportStar) || function(m, exports) {
-    for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
-};
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.SettingMonitor = exports.LanguageClient = exports.TransportKind = void 0;
-const cp = __webpack_require__(/*! child_process */ "child_process");
-const fs = __webpack_require__(/*! fs */ "fs");
-const path = __webpack_require__(/*! path */ "path");
-const vscode_1 = __webpack_require__(/*! vscode */ "vscode");
-const Is = __webpack_require__(/*! ../common/utils/is */ "./node_modules/vscode-languageclient/lib/common/utils/is.js");
-const client_1 = __webpack_require__(/*! ../common/client */ "./node_modules/vscode-languageclient/lib/common/client.js");
-const processes_1 = __webpack_require__(/*! ./processes */ "./node_modules/vscode-languageclient/lib/node/processes.js");
-const node_1 = __webpack_require__(/*! vscode-languageserver-protocol/node */ "./node_modules/vscode-languageserver-protocol/node.js");
-// Import SemVer functions individually to avoid circular dependencies in SemVer
-const semverParse = __webpack_require__(/*! semver/functions/parse */ "./node_modules/semver/functions/parse.js");
-const semverSatisfies = __webpack_require__(/*! semver/functions/satisfies */ "./node_modules/semver/functions/satisfies.js");
-__exportStar(__webpack_require__(/*! vscode-languageserver-protocol/node */ "./node_modules/vscode-languageserver-protocol/node.js"), exports);
-__exportStar(__webpack_require__(/*! ../common/api */ "./node_modules/vscode-languageclient/lib/common/api.js"), exports);
-const REQUIRED_VSCODE_VERSION = '^1.67.0'; // do not change format, updated by `updateVSCode` script
-var TransportKind;
-(function (TransportKind) {
-    TransportKind[TransportKind["stdio"] = 0] = "stdio";
-    TransportKind[TransportKind["ipc"] = 1] = "ipc";
-    TransportKind[TransportKind["pipe"] = 2] = "pipe";
-    TransportKind[TransportKind["socket"] = 3] = "socket";
-})(TransportKind = exports.TransportKind || (exports.TransportKind = {}));
-var Transport;
-(function (Transport) {
-    function isSocket(value) {
-        const candidate = value;
-        return candidate && candidate.kind === TransportKind.socket && Is.number(candidate.port);
-    }
-    Transport.isSocket = isSocket;
-})(Transport || (Transport = {}));
-var Executable;
-(function (Executable) {
-    function is(value) {
-        return Is.string(value.command);
-    }
-    Executable.is = is;
-})(Executable || (Executable = {}));
-var NodeModule;
-(function (NodeModule) {
-    function is(value) {
-        return Is.string(value.module);
-    }
-    NodeModule.is = is;
-})(NodeModule || (NodeModule = {}));
-var StreamInfo;
-(function (StreamInfo) {
-    function is(value) {
-        let candidate = value;
-        return candidate && candidate.writer !== undefined && candidate.reader !== undefined;
-    }
-    StreamInfo.is = is;
-})(StreamInfo || (StreamInfo = {}));
-var ChildProcessInfo;
-(function (ChildProcessInfo) {
-    function is(value) {
-        let candidate = value;
-        return candidate && candidate.process !== undefined && typeof candidate.detached === 'boolean';
-    }
-    ChildProcessInfo.is = is;
-})(ChildProcessInfo || (ChildProcessInfo = {}));
-class LanguageClient extends client_1.BaseLanguageClient {
-    constructor(arg1, arg2, arg3, arg4, arg5) {
-        let id;
-        let name;
-        let serverOptions;
-        let clientOptions;
-        let forceDebug;
-        if (Is.string(arg2)) {
-            id = arg1;
-            name = arg2;
-            serverOptions = arg3;
-            clientOptions = arg4;
-            forceDebug = !!arg5;
-        }
-        else {
-            id = arg1.toLowerCase();
-            name = arg1;
-            serverOptions = arg2;
-            clientOptions = arg3;
-            forceDebug = arg4;
-        }
-        if (forceDebug === undefined) {
-            forceDebug = false;
-        }
-        super(id, name, clientOptions);
-        this._serverOptions = serverOptions;
-        this._forceDebug = forceDebug;
-        this._isInDebugMode = forceDebug;
-        try {
-            this.checkVersion();
-        }
-        catch (error) {
-            if (Is.string(error.message)) {
-                this.outputChannel.appendLine(error.message);
-            }
-            throw error;
-        }
-    }
-    checkVersion() {
-        const codeVersion = semverParse(vscode_1.version);
-        if (!codeVersion) {
-            throw new Error(`No valid VS Code version detected. Version string is: ${vscode_1.version}`);
-        }
-        // Remove the insider pre-release since we stay API compatible.
-        if (codeVersion.prerelease && codeVersion.prerelease.length > 0) {
-            codeVersion.prerelease = [];
-        }
-        if (!semverSatisfies(codeVersion, REQUIRED_VSCODE_VERSION)) {
-            throw new Error(`The language client requires VS Code version ${REQUIRED_VSCODE_VERSION} but received version ${vscode_1.version}`);
-        }
-    }
-    get isInDebugMode() {
-        return this._isInDebugMode;
-    }
-    async restart() {
-        await this.stop();
-        // We are in debug mode. Wait a little before we restart
-        // so that the debug port can be freed. We can safely ignore
-        // the disposable returned from start since it will call
-        // stop on the same client instance.
-        if (this.isInDebugMode) {
-            await new Promise((resolve) => setTimeout(resolve, 1000));
-            await this.start();
-        }
-        else {
-            await this.start();
-        }
-    }
-    stop(timeout = 2000) {
-        return super.stop(timeout).finally(() => {
-            if (this._serverProcess) {
-                const toCheck = this._serverProcess;
-                this._serverProcess = undefined;
-                if (this._isDetached === undefined || !this._isDetached) {
-                    this.checkProcessDied(toCheck);
-                }
-                this._isDetached = undefined;
-            }
-        });
-    }
-    checkProcessDied(childProcess) {
-        if (!childProcess || childProcess.pid === undefined) {
-            return;
-        }
-        setTimeout(() => {
-            // Test if the process is still alive. Throws an exception if not
-            try {
-                if (childProcess.pid !== undefined) {
-                    process.kill(childProcess.pid, 0);
-                    (0, processes_1.terminate)(childProcess);
-                }
-            }
-            catch (error) {
-                // All is fine.
-            }
-        }, 2000);
-    }
-    handleConnectionClosed() {
-        this._serverProcess = undefined;
-        return super.handleConnectionClosed();
-    }
-    fillInitializeParams(params) {
-        super.fillInitializeParams(params);
-        if (params.processId === null) {
-            params.processId = process.pid;
-        }
-    }
-    createMessageTransports(encoding) {
-        function getEnvironment(env, fork) {
-            if (!env && !fork) {
-                return undefined;
-            }
-            const result = Object.create(null);
-            Object.keys(process.env).forEach(key => result[key] = process.env[key]);
-            if (fork) {
-                result['ELECTRON_RUN_AS_NODE'] = '1';
-                result['ELECTRON_NO_ASAR'] = '1';
-            }
-            if (env) {
-                Object.keys(env).forEach(key => result[key] = env[key]);
-            }
-            return result;
-        }
-        const debugStartWith = ['--debug=', '--debug-brk=', '--inspect=', '--inspect-brk='];
-        const debugEquals = ['--debug', '--debug-brk', '--inspect', '--inspect-brk'];
-        function startedInDebugMode() {
-            let args = process.execArgv;
-            if (args) {
-                return args.some((arg) => {
-                    return debugStartWith.some(value => arg.startsWith(value)) ||
-                        debugEquals.some(value => arg === value);
-                });
-            }
-            return false;
-        }
-        function assertStdio(process) {
-            if (process.stdin === null || process.stdout === null || process.stderr === null) {
-                throw new Error('Process created without stdio streams');
-            }
-        }
-        const server = this._serverOptions;
-        // We got a function.
-        if (Is.func(server)) {
-            return server().then((result) => {
-                if (client_1.MessageTransports.is(result)) {
-                    this._isDetached = !!result.detached;
-                    return result;
-                }
-                else if (StreamInfo.is(result)) {
-                    this._isDetached = !!result.detached;
-                    return { reader: new node_1.StreamMessageReader(result.reader), writer: new node_1.StreamMessageWriter(result.writer) };
-                }
-                else {
-                    let cp;
-                    if (ChildProcessInfo.is(result)) {
-                        cp = result.process;
-                        this._isDetached = result.detached;
-                    }
-                    else {
-                        cp = result;
-                        this._isDetached = false;
-                    }
-                    cp.stderr.on('data', data => this.outputChannel.append(Is.string(data) ? data : data.toString(encoding)));
-                    return { reader: new node_1.StreamMessageReader(cp.stdout), writer: new node_1.StreamMessageWriter(cp.stdin) };
-                }
-            });
-        }
-        let json;
-        let runDebug = server;
-        if (runDebug.run || runDebug.debug) {
-            if (this._forceDebug || startedInDebugMode()) {
-                json = runDebug.debug;
-                this._isInDebugMode = true;
-            }
-            else {
-                json = runDebug.run;
-                this._isInDebugMode = false;
-            }
-        }
-        else {
-            json = server;
-        }
-        return this._getServerWorkingDir(json.options).then(serverWorkingDir => {
-            if (NodeModule.is(json) && json.module) {
-                let node = json;
-                let transport = node.transport || TransportKind.stdio;
-                if (node.runtime) {
-                    const args = [];
-                    const options = node.options ?? Object.create(null);
-                    if (options.execArgv) {
-                        options.execArgv.forEach(element => args.push(element));
-                    }
-                    args.push(node.module);
-                    if (node.args) {
-                        node.args.forEach(element => args.push(element));
-                    }
-                    const execOptions = Object.create(null);
-                    execOptions.cwd = serverWorkingDir;
-                    execOptions.env = getEnvironment(options.env, false);
-                    const runtime = this._getRuntimePath(node.runtime, serverWorkingDir);
-                    let pipeName = undefined;
-                    if (transport === TransportKind.ipc) {
-                        // exec options not correctly typed in lib
-                        execOptions.stdio = [null, null, null, 'ipc'];
-                        args.push('--node-ipc');
-                    }
-                    else if (transport === TransportKind.stdio) {
-                        args.push('--stdio');
-                    }
-                    else if (transport === TransportKind.pipe) {
-                        pipeName = (0, node_1.generateRandomPipeName)();
-                        args.push(`--pipe=${pipeName}`);
-                    }
-                    else if (Transport.isSocket(transport)) {
-                        args.push(`--socket=${transport.port}`);
-                    }
-                    args.push(`--clientProcessId=${process.pid.toString()}`);
-                    if (transport === TransportKind.ipc || transport === TransportKind.stdio) {
-                        const serverProcess = cp.spawn(runtime, args, execOptions);
-                        if (!serverProcess || !serverProcess.pid) {
-                            return handleChildProcessStartError(serverProcess, `Launching server using runtime ${runtime} failed.`);
-                        }
-                        this._serverProcess = serverProcess;
-                        serverProcess.stderr.on('data', data => this.outputChannel.append(Is.string(data) ? data : data.toString(encoding)));
-                        if (transport === TransportKind.ipc) {
-                            serverProcess.stdout.on('data', data => this.outputChannel.append(Is.string(data) ? data : data.toString(encoding)));
-                            return Promise.resolve({ reader: new node_1.IPCMessageReader(serverProcess), writer: new node_1.IPCMessageWriter(serverProcess) });
-                        }
-                        else {
-                            return Promise.resolve({ reader: new node_1.StreamMessageReader(serverProcess.stdout), writer: new node_1.StreamMessageWriter(serverProcess.stdin) });
-                        }
-                    }
-                    else if (transport === TransportKind.pipe) {
-                        return (0, node_1.createClientPipeTransport)(pipeName).then((transport) => {
-                            const process = cp.spawn(runtime, args, execOptions);
-                            if (!process || !process.pid) {
-                                return handleChildProcessStartError(process, `Launching server using runtime ${runtime} failed.`);
-                            }
-                            this._serverProcess = process;
-                            process.stderr.on('data', data => this.outputChannel.append(Is.string(data) ? data : data.toString(encoding)));
-                            process.stdout.on('data', data => this.outputChannel.append(Is.string(data) ? data : data.toString(encoding)));
-                            return transport.onConnected().then((protocol) => {
-                                return { reader: protocol[0], writer: protocol[1] };
-                            });
-                        });
-                    }
-                    else if (Transport.isSocket(transport)) {
-                        return (0, node_1.createClientSocketTransport)(transport.port).then((transport) => {
-                            const process = cp.spawn(runtime, args, execOptions);
-                            if (!process || !process.pid) {
-                                return handleChildProcessStartError(process, `Launching server using runtime ${runtime} failed.`);
-                            }
-                            this._serverProcess = process;
-                            process.stderr.on('data', data => this.outputChannel.append(Is.string(data) ? data : data.toString(encoding)));
-                            process.stdout.on('data', data => this.outputChannel.append(Is.string(data) ? data : data.toString(encoding)));
-                            return transport.onConnected().then((protocol) => {
-                                return { reader: protocol[0], writer: protocol[1] };
-                            });
-                        });
-                    }
-                }
-                else {
-                    let pipeName = undefined;
-                    return new Promise((resolve, reject) => {
-                        const args = (node.args && node.args.slice()) ?? [];
-                        if (transport === TransportKind.ipc) {
-                            args.push('--node-ipc');
-                        }
-                        else if (transport === TransportKind.stdio) {
-                            args.push('--stdio');
-                        }
-                        else if (transport === TransportKind.pipe) {
-                            pipeName = (0, node_1.generateRandomPipeName)();
-                            args.push(`--pipe=${pipeName}`);
-                        }
-                        else if (Transport.isSocket(transport)) {
-                            args.push(`--socket=${transport.port}`);
-                        }
-                        args.push(`--clientProcessId=${process.pid.toString()}`);
-                        const options = node.options ?? Object.create(null);
-                        options.env = getEnvironment(options.env, true);
-                        options.execArgv = options.execArgv || [];
-                        options.cwd = serverWorkingDir;
-                        options.silent = true;
-                        if (transport === TransportKind.ipc || transport === TransportKind.stdio) {
-                            const sp = cp.fork(node.module, args || [], options);
-                            assertStdio(sp);
-                            this._serverProcess = sp;
-                            sp.stderr.on('data', data => this.outputChannel.append(Is.string(data) ? data : data.toString(encoding)));
-                            if (transport === TransportKind.ipc) {
-                                sp.stdout.on('data', data => this.outputChannel.append(Is.string(data) ? data : data.toString(encoding)));
-                                resolve({ reader: new node_1.IPCMessageReader(this._serverProcess), writer: new node_1.IPCMessageWriter(this._serverProcess) });
-                            }
-                            else {
-                                resolve({ reader: new node_1.StreamMessageReader(sp.stdout), writer: new node_1.StreamMessageWriter(sp.stdin) });
-                            }
-                        }
-                        else if (transport === TransportKind.pipe) {
-                            (0, node_1.createClientPipeTransport)(pipeName).then((transport) => {
-                                const sp = cp.fork(node.module, args || [], options);
-                                assertStdio(sp);
-                                this._serverProcess = sp;
-                                sp.stderr.on('data', data => this.outputChannel.append(Is.string(data) ? data : data.toString(encoding)));
-                                sp.stdout.on('data', data => this.outputChannel.append(Is.string(data) ? data : data.toString(encoding)));
-                                transport.onConnected().then((protocol) => {
-                                    resolve({ reader: protocol[0], writer: protocol[1] });
-                                }, reject);
-                            }, reject);
-                        }
-                        else if (Transport.isSocket(transport)) {
-                            (0, node_1.createClientSocketTransport)(transport.port).then((transport) => {
-                                const sp = cp.fork(node.module, args || [], options);
-                                assertStdio(sp);
-                                this._serverProcess = sp;
-                                sp.stderr.on('data', data => this.outputChannel.append(Is.string(data) ? data : data.toString(encoding)));
-                                sp.stdout.on('data', data => this.outputChannel.append(Is.string(data) ? data : data.toString(encoding)));
-                                transport.onConnected().then((protocol) => {
-                                    resolve({ reader: protocol[0], writer: protocol[1] });
-                                }, reject);
-                            }, reject);
-                        }
-                    });
-                }
-            }
-            else if (Executable.is(json) && json.command) {
-                const command = json;
-                const args = json.args !== undefined ? json.args.slice(0) : [];
-                let pipeName = undefined;
-                const transport = json.transport;
-                if (transport === TransportKind.stdio) {
-                    args.push('--stdio');
-                }
-                else if (transport === TransportKind.pipe) {
-                    pipeName = (0, node_1.generateRandomPipeName)();
-                    args.push(`--pipe=${pipeName}`);
-                }
-                else if (Transport.isSocket(transport)) {
-                    args.push(`--socket=${transport.port}`);
-                }
-                else if (transport === TransportKind.ipc) {
-                    throw new Error(`Transport kind ipc is not support for command executable`);
-                }
-                const options = Object.assign({}, command.options);
-                options.cwd = options.cwd || serverWorkingDir;
-                if (transport === undefined || transport === TransportKind.stdio) {
-                    const serverProcess = cp.spawn(command.command, args, options);
-                    if (!serverProcess || !serverProcess.pid) {
-                        return handleChildProcessStartError(serverProcess, `Launching server using command ${command.command} failed.`);
-                    }
-                    serverProcess.stderr.on('data', data => this.outputChannel.append(Is.string(data) ? data : data.toString(encoding)));
-                    this._serverProcess = serverProcess;
-                    this._isDetached = !!options.detached;
-                    return Promise.resolve({ reader: new node_1.StreamMessageReader(serverProcess.stdout), writer: new node_1.StreamMessageWriter(serverProcess.stdin) });
-                }
-                else if (transport === TransportKind.pipe) {
-                    return (0, node_1.createClientPipeTransport)(pipeName).then((transport) => {
-                        const serverProcess = cp.spawn(command.command, args, options);
-                        if (!serverProcess || !serverProcess.pid) {
-                            return handleChildProcessStartError(serverProcess, `Launching server using command ${command.command} failed.`);
-                        }
-                        this._serverProcess = serverProcess;
-                        this._isDetached = !!options.detached;
-                        serverProcess.stderr.on('data', data => this.outputChannel.append(Is.string(data) ? data : data.toString(encoding)));
-                        serverProcess.stdout.on('data', data => this.outputChannel.append(Is.string(data) ? data : data.toString(encoding)));
-                        return transport.onConnected().then((protocol) => {
-                            return { reader: protocol[0], writer: protocol[1] };
-                        });
-                    });
-                }
-                else if (Transport.isSocket(transport)) {
-                    return (0, node_1.createClientSocketTransport)(transport.port).then((transport) => {
-                        const serverProcess = cp.spawn(command.command, args, options);
-                        if (!serverProcess || !serverProcess.pid) {
-                            return handleChildProcessStartError(serverProcess, `Launching server using command ${command.command} failed.`);
-                        }
-                        this._serverProcess = serverProcess;
-                        this._isDetached = !!options.detached;
-                        serverProcess.stderr.on('data', data => this.outputChannel.append(Is.string(data) ? data : data.toString(encoding)));
-                        serverProcess.stdout.on('data', data => this.outputChannel.append(Is.string(data) ? data : data.toString(encoding)));
-                        return transport.onConnected().then((protocol) => {
-                            return { reader: protocol[0], writer: protocol[1] };
-                        });
-                    });
-                }
-            }
-            return Promise.reject(new Error(`Unsupported server configuration ` + JSON.stringify(server, null, 4)));
-        });
-    }
-    _getRuntimePath(runtime, serverWorkingDirectory) {
-        if (path.isAbsolute(runtime)) {
-            return runtime;
-        }
-        const mainRootPath = this._mainGetRootPath();
-        if (mainRootPath !== undefined) {
-            const result = path.join(mainRootPath, runtime);
-            if (fs.existsSync(result)) {
-                return result;
-            }
-        }
-        if (serverWorkingDirectory !== undefined) {
-            const result = path.join(serverWorkingDirectory, runtime);
-            if (fs.existsSync(result)) {
-                return result;
-            }
-        }
-        return runtime;
-    }
-    _mainGetRootPath() {
-        let folders = vscode_1.workspace.workspaceFolders;
-        if (!folders || folders.length === 0) {
-            return undefined;
-        }
-        let folder = folders[0];
-        if (folder.uri.scheme === 'file') {
-            return folder.uri.fsPath;
-        }
-        return undefined;
-    }
-    _getServerWorkingDir(options) {
-        let cwd = options && options.cwd;
-        if (!cwd) {
-            cwd = this.clientOptions.workspaceFolder
-                ? this.clientOptions.workspaceFolder.uri.fsPath
-                : this._mainGetRootPath();
-        }
-        if (cwd) {
-            // make sure the folder exists otherwise creating the process will fail
-            return new Promise(s => {
-                fs.lstat(cwd, (err, stats) => {
-                    s(!err && stats.isDirectory() ? cwd : undefined);
-                });
-            });
-        }
-        return Promise.resolve(undefined);
-    }
-}
-exports.LanguageClient = LanguageClient;
-class SettingMonitor {
-    constructor(_client, _setting) {
-        this._client = _client;
-        this._setting = _setting;
-        this._listeners = [];
-    }
-    start() {
-        vscode_1.workspace.onDidChangeConfiguration(this.onDidChangeConfiguration, this, this._listeners);
-        this.onDidChangeConfiguration();
-        return new vscode_1.Disposable(() => {
-            if (this._client.needsStop()) {
-                void this._client.stop();
-            }
-        });
-    }
-    onDidChangeConfiguration() {
-        let index = this._setting.indexOf('.');
-        let primary = index >= 0 ? this._setting.substr(0, index) : this._setting;
-        let rest = index >= 0 ? this._setting.substr(index + 1) : undefined;
-        let enabled = rest ? vscode_1.workspace.getConfiguration(primary).get(rest, false) : vscode_1.workspace.getConfiguration(primary);
-        if (enabled && this._client.needsStart()) {
-            this._client.start().catch((error) => this._client.error('Start failed after configuration change', error, 'force'));
-        }
-        else if (!enabled && this._client.needsStop()) {
-            void this._client.stop().catch((error) => this._client.error('Stop failed after configuration change', error, 'force'));
-        }
-    }
-}
-exports.SettingMonitor = SettingMonitor;
-function handleChildProcessStartError(process, message) {
-    if (process === null) {
-        return Promise.reject(message);
-    }
-    return new Promise((_, reject) => {
-        process.on('error', (err) => {
-            reject(`${message} ${err}`);
-        });
-        // the error event should always be run immediately,
-        // but race on it just in case
-        setImmediate(() => reject(message));
-    });
-}
-
-
-/***/ }),
-
-/***/ "./node_modules/vscode-languageclient/lib/node/processes.js":
-/*!******************************************************************!*\
-  !*** ./node_modules/vscode-languageclient/lib/node/processes.js ***!
-  \******************************************************************/
-/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
-
-"use strict";
-/* provided dependency */ var process = __webpack_require__(/*! process/browser */ "./node_modules/process/browser.js");
-
-/* --------------------------------------------------------------------------------------------
- * Copyright (c) Microsoft Corporation. All rights reserved.
- * Licensed under the MIT License. See License.txt in the project root for license information.
- * ------------------------------------------------------------------------------------------ */
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.terminate = void 0;
-const cp = __webpack_require__(/*! child_process */ "child_process");
-const path_1 = __webpack_require__(/*! path */ "path");
-const isWindows = (process.platform === 'win32');
-const isMacintosh = (process.platform === 'darwin');
-const isLinux = (process.platform === 'linux');
-function terminate(process, cwd) {
-    if (isWindows) {
-        try {
-            // This we run in Atom execFileSync is available.
-            // Ignore stderr since this is otherwise piped to parent.stderr
-            // which might be already closed.
-            let options = {
-                stdio: ['pipe', 'pipe', 'ignore']
-            };
-            if (cwd) {
-                options.cwd = cwd;
-            }
-            cp.execFileSync('taskkill', ['/T', '/F', '/PID', process.pid.toString()], options);
-            return true;
-        }
-        catch (err) {
-            return false;
-        }
-    }
-    else if (isLinux || isMacintosh) {
-        try {
-            var cmd = (0, path_1.join)(__dirname, 'terminateProcess.sh');
-            var result = cp.spawnSync(cmd, [process.pid.toString()]);
-            return result.error ? false : true;
-        }
-        catch (err) {
-            return false;
-        }
-    }
-    else {
-        process.kill('SIGKILL');
-        return true;
-    }
-}
-exports.terminate = terminate;
-
-
-/***/ }),
-
 /***/ "./node_modules/vscode-languageclient/node.js":
 /*!****************************************************!*\
   !*** ./node_modules/vscode-languageclient/node.js ***!
@@ -16950,7 +14215,7 @@ exports.terminate = terminate;
  * ----------------------------------------------------------------------------------------- */
 
 
-module.exports = __webpack_require__(/*! ./lib/node/main */ "./node_modules/vscode-languageclient/lib/node/main.js");
+module.exports = __webpack_require__(/*! ./lib/node/main */ "./node_modules/vscode-languageclient/lib/browser/main.js");
 
 /***/ }),
 
@@ -18007,7 +15272,7 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.LSPErrorCodes = exports.createProtocolConnection = void 0;
-__exportStar(__webpack_require__(/*! vscode-jsonrpc */ "./node_modules/vscode-jsonrpc/lib/node/main.js"), exports);
+__exportStar(__webpack_require__(/*! vscode-jsonrpc */ "./node_modules/vscode-jsonrpc/lib/browser/main.js"), exports);
 __exportStar(__webpack_require__(/*! vscode-languageserver-types */ "./node_modules/vscode-languageserver-types/lib/esm/main.js"), exports);
 __exportStar(__webpack_require__(/*! ./messages */ "./node_modules/vscode-languageserver-protocol/lib/common/messages.js"), exports);
 __exportStar(__webpack_require__(/*! ./protocol */ "./node_modules/vscode-languageserver-protocol/lib/common/protocol.js"), exports);
@@ -18081,7 +15346,7 @@ var LSPErrorCodes;
  * ------------------------------------------------------------------------------------------ */
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.createProtocolConnection = void 0;
-const vscode_jsonrpc_1 = __webpack_require__(/*! vscode-jsonrpc */ "./node_modules/vscode-jsonrpc/lib/node/main.js");
+const vscode_jsonrpc_1 = __webpack_require__(/*! vscode-jsonrpc */ "./node_modules/vscode-jsonrpc/lib/browser/main.js");
 function createProtocolConnection(input, output, logger, options) {
     if (vscode_jsonrpc_1.ConnectionStrategy.is(options)) {
         options = { connectionStrategy: options };
@@ -18107,7 +15372,7 @@ exports.createProtocolConnection = createProtocolConnection;
  * ------------------------------------------------------------------------------------------ */
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.ProtocolNotificationType = exports.ProtocolNotificationType0 = exports.ProtocolRequestType = exports.ProtocolRequestType0 = exports.RegistrationType = exports.MessageDirection = void 0;
-const vscode_jsonrpc_1 = __webpack_require__(/*! vscode-jsonrpc */ "./node_modules/vscode-jsonrpc/lib/node/main.js");
+const vscode_jsonrpc_1 = __webpack_require__(/*! vscode-jsonrpc */ "./node_modules/vscode-jsonrpc/lib/browser/main.js");
 var MessageDirection;
 (function (MessageDirection) {
     MessageDirection["clientToServer"] = "clientToServer";
@@ -18327,7 +15592,7 @@ var DeclarationRequest;
  * ------------------------------------------------------------------------------------------ */
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.DiagnosticRefreshRequest = exports.WorkspaceDiagnosticRequest = exports.DocumentDiagnosticRequest = exports.DocumentDiagnosticReportKind = exports.DiagnosticServerCancellationData = void 0;
-const vscode_jsonrpc_1 = __webpack_require__(/*! vscode-jsonrpc */ "./node_modules/vscode-jsonrpc/lib/node/main.js");
+const vscode_jsonrpc_1 = __webpack_require__(/*! vscode-jsonrpc */ "./node_modules/vscode-jsonrpc/lib/browser/main.js");
 const Is = __webpack_require__(/*! ./utils/is */ "./node_modules/vscode-languageserver-protocol/lib/common/utils/is.js");
 const messages_1 = __webpack_require__(/*! ./messages */ "./node_modules/vscode-languageserver-protocol/lib/common/messages.js");
 /**
@@ -19951,7 +17216,7 @@ var DidCloseNotebookDocumentNotification;
  * ------------------------------------------------------------------------------------------ */
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.WorkDoneProgressCancelNotification = exports.WorkDoneProgressCreateRequest = exports.WorkDoneProgress = void 0;
-const vscode_jsonrpc_1 = __webpack_require__(/*! vscode-jsonrpc */ "./node_modules/vscode-jsonrpc/lib/node/main.js");
+const vscode_jsonrpc_1 = __webpack_require__(/*! vscode-jsonrpc */ "./node_modules/vscode-jsonrpc/lib/browser/main.js");
 const messages_1 = __webpack_require__(/*! ./messages */ "./node_modules/vscode-languageserver-protocol/lib/common/messages.js");
 var WorkDoneProgress;
 (function (WorkDoneProgress) {
@@ -20295,62 +17560,6 @@ function objectLiteral(value) {
 }
 exports.objectLiteral = objectLiteral;
 
-
-/***/ }),
-
-/***/ "./node_modules/vscode-languageserver-protocol/lib/node/main.js":
-/*!**********************************************************************!*\
-  !*** ./node_modules/vscode-languageserver-protocol/lib/node/main.js ***!
-  \**********************************************************************/
-/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
-
-"use strict";
-
-/* --------------------------------------------------------------------------------------------
- * Copyright (c) Microsoft Corporation. All rights reserved.
- * Licensed under the MIT License. See License.txt in the project root for license information.
- * ------------------------------------------------------------------------------------------ */
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __exportStar = (this && this.__exportStar) || function(m, exports) {
-    for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
-};
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.createProtocolConnection = void 0;
-const node_1 = __webpack_require__(/*! vscode-jsonrpc/node */ "./node_modules/vscode-jsonrpc/node.js");
-__exportStar(__webpack_require__(/*! vscode-jsonrpc/node */ "./node_modules/vscode-jsonrpc/node.js"), exports);
-__exportStar(__webpack_require__(/*! ../common/api */ "./node_modules/vscode-languageserver-protocol/lib/common/api.js"), exports);
-function createProtocolConnection(input, output, logger, options) {
-    return (0, node_1.createMessageConnection)(input, output, logger, options);
-}
-exports.createProtocolConnection = createProtocolConnection;
-
-
-/***/ }),
-
-/***/ "./node_modules/vscode-languageserver-protocol/node.js":
-/*!*************************************************************!*\
-  !*** ./node_modules/vscode-languageserver-protocol/node.js ***!
-  \*************************************************************/
-/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
-
-"use strict";
-/* --------------------------------------------------------------------------------------------
- * Copyright (c) Microsoft Corporation. All rights reserved.
- * Licensed under the MIT License. See License.txt in the project root for license information.
- * ----------------------------------------------------------------------------------------- */
-
-
-module.exports = __webpack_require__(/*! ./lib/node/main */ "./node_modules/vscode-languageserver-protocol/lib/node/main.js");
 
 /***/ }),
 
@@ -22693,94 +19902,6 @@ exports.GetTypeAtPositionRequest = "tact/getTypeAtPosition";
 exports.GetDocumentationAtPositionRequest = "tact/executeHoverProvider";
 exports.SetToolchainVersionNotification = "tact/setToolchainVersion";
 
-
-/***/ }),
-
-/***/ "buffer":
-/*!*************************!*\
-  !*** external "buffer" ***!
-  \*************************/
-/***/ ((module) => {
-
-"use strict";
-module.exports = require("buffer");
-
-/***/ }),
-
-/***/ "child_process":
-/*!********************************!*\
-  !*** external "child_process" ***!
-  \********************************/
-/***/ ((module) => {
-
-"use strict";
-module.exports = require("child_process");
-
-/***/ }),
-
-/***/ "crypto":
-/*!*************************!*\
-  !*** external "crypto" ***!
-  \*************************/
-/***/ ((module) => {
-
-"use strict";
-module.exports = require("crypto");
-
-/***/ }),
-
-/***/ "fs":
-/*!*********************!*\
-  !*** external "fs" ***!
-  \*********************/
-/***/ ((module) => {
-
-"use strict";
-module.exports = require("fs");
-
-/***/ }),
-
-/***/ "net":
-/*!**********************!*\
-  !*** external "net" ***!
-  \**********************/
-/***/ ((module) => {
-
-"use strict";
-module.exports = require("net");
-
-/***/ }),
-
-/***/ "os":
-/*!*********************!*\
-  !*** external "os" ***!
-  \*********************/
-/***/ ((module) => {
-
-"use strict";
-module.exports = require("os");
-
-/***/ }),
-
-/***/ "path":
-/*!***********************!*\
-  !*** external "path" ***!
-  \***********************/
-/***/ ((module) => {
-
-"use strict";
-module.exports = require("path");
-
-/***/ }),
-
-/***/ "util":
-/*!***********************!*\
-  !*** external "util" ***!
-  \***********************/
-/***/ ((module) => {
-
-"use strict";
-module.exports = require("util");
 
 /***/ }),
 
