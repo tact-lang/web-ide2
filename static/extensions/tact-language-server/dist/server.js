@@ -19924,6 +19924,7 @@ module.exports = subtokenize
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
+/* provided dependency */ var Buffer = __webpack_require__(/*! buffer */ "buffer")["Buffer"];
 
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
@@ -27007,6 +27008,7 @@ exports.createMessageConnection = createMessageConnection;
 /***/ ((__unused_webpack_module, exports, __webpack_require__) => {
 
 "use strict";
+/* provided dependency */ var Buffer = __webpack_require__(/*! buffer */ "buffer")["Buffer"];
 
 /* --------------------------------------------------------------------------------------------
  * Copyright (c) Microsoft Corporation. All rights reserved.
@@ -46163,6 +46165,7 @@ function createFiftParser() {
 /***/ ((__unused_webpack_module, exports, __webpack_require__) => {
 
 "use strict";
+/* provided dependency */ var Buffer = __webpack_require__(/*! buffer */ "buffer")["Buffer"];
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.Constant = exports.Field = exports.Fun = exports.MessageFunction = exports.InitFunction = exports.Contract = exports.Trait = exports.StorageMembersOwner = exports.Primitive = exports.Struct = exports.Message = exports.FieldsOwner = void 0;
@@ -49703,6 +49706,17 @@ exports.GetTypeAtPositionRequest = "tact/getTypeAtPosition";
 exports.GetDocumentationAtPositionRequest = "tact/executeHoverProvider";
 exports.SetToolchainVersionNotification = "tact/setToolchainVersion";
 
+
+/***/ }),
+
+/***/ "buffer":
+/*!*************************!*\
+  !*** external "buffer" ***!
+  \*************************/
+/***/ ((module) => {
+
+"use strict";
+module.exports = require("buffer");
 
 /***/ }),
 

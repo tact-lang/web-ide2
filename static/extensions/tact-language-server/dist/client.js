@@ -528,6 +528,7 @@ exports.BocFileSystemProvider = BocFileSystemProvider;
 /***/ ((__unused_webpack_module, exports, __webpack_require__) => {
 
 "use strict";
+/* provided dependency */ var Buffer = __webpack_require__(/*! buffer */ "buffer")["Buffer"];
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.readFile = readFile;
@@ -1265,6 +1266,7 @@ Object.defineProperty(exports, "Dictionary", ({ enumerable: true, get: function 
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
+/* provided dependency */ var Buffer = __webpack_require__(/*! buffer */ "buffer")["Buffer"];
 
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
@@ -1932,6 +1934,7 @@ exports.repeat = repeat;
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
+/* provided dependency */ var Buffer = __webpack_require__(/*! buffer */ "buffer")["Buffer"];
 
 /**
  * Copyright (c) Whales Corp.
@@ -2004,6 +2007,7 @@ _a = symbol_inspect_1.default;
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
+/* provided dependency */ var Buffer = __webpack_require__(/*! buffer */ "buffer")["Buffer"];
 
 /**
  * Copyright (c) Whales Corp.
@@ -2279,6 +2283,7 @@ exports.contractAddress = contractAddress;
 /***/ ((__unused_webpack_module, exports, __webpack_require__) => {
 
 "use strict";
+/* provided dependency */ var Buffer = __webpack_require__(/*! buffer */ "buffer")["Buffer"];
 
 /**
  * Copyright (c) Whales Corp.
@@ -2566,6 +2571,7 @@ exports.BitBuilder = BitBuilder;
 /***/ ((__unused_webpack_module, exports, __webpack_require__) => {
 
 "use strict";
+/* provided dependency */ var Buffer = __webpack_require__(/*! buffer */ "buffer")["Buffer"];
 
 /**
  * Copyright (c) Whales Corp.
@@ -3049,6 +3055,7 @@ exports.BitReader = BitReader;
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
+/* provided dependency */ var Buffer = __webpack_require__(/*! buffer */ "buffer")["Buffer"];
 
 /**
  * Copyright (c) Whales Corp.
@@ -3703,6 +3710,7 @@ exports.Builder = Builder;
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
+/* provided dependency */ var Buffer = __webpack_require__(/*! buffer */ "buffer")["Buffer"];
 
 /**
  * Copyright (c) Whales Corp.
@@ -4540,6 +4548,7 @@ function countSetBits(n) {
 /***/ ((__unused_webpack_module, exports, __webpack_require__) => {
 
 "use strict";
+/* provided dependency */ var Buffer = __webpack_require__(/*! buffer */ "buffer")["Buffer"];
 
 /**
  * Copyright (c) Whales Corp.
@@ -5555,6 +5564,7 @@ exports.paddedBufferToBits = paddedBufferToBits;
 /***/ ((__unused_webpack_module, exports, __webpack_require__) => {
 
 "use strict";
+/* provided dependency */ var Buffer = __webpack_require__(/*! buffer */ "buffer")["Buffer"];
 
 /**
  * Copyright (c) Whales Corp.
@@ -5716,6 +5726,7 @@ exports.openContract = openContract;
 /***/ ((__unused_webpack_module, exports, __webpack_require__) => {
 
 "use strict";
+/* provided dependency */ var Buffer = __webpack_require__(/*! buffer */ "buffer")["Buffer"];
 
 /**
  * Copyright (c) Whales Corp.
@@ -5758,6 +5769,7 @@ exports.safeSignVerify = safeSignVerify;
 /***/ ((__unused_webpack_module, exports, __webpack_require__) => {
 
 "use strict";
+/* provided dependency */ var Buffer = __webpack_require__(/*! buffer */ "buffer")["Buffer"];
 
 /**
  * Copyright (c) Whales Corp.
@@ -6864,6 +6876,7 @@ exports.findCommonPrefix = findCommonPrefix;
 /***/ ((__unused_webpack_module, exports, __webpack_require__) => {
 
 "use strict";
+/* provided dependency */ var Buffer = __webpack_require__(/*! buffer */ "buffer")["Buffer"];
 
 /**
  * Copyright (c) Whales Corp.
@@ -10219,9 +10232,10 @@ exports.comment = comment;
 /*!*****************************************************!*\
   !*** ./node_modules/@ton/core/dist/utils/base32.js ***!
   \*****************************************************/
-/***/ ((__unused_webpack_module, exports) => {
+/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
 
 "use strict";
+/* provided dependency */ var Buffer = __webpack_require__(/*! buffer */ "buffer")["Buffer"];
 
 /**
  * Copyright (c) Whales Corp.
@@ -10432,9 +10446,10 @@ exports.fromNano = fromNano;
 /*!****************************************************!*\
   !*** ./node_modules/@ton/core/dist/utils/crc16.js ***!
   \****************************************************/
-/***/ ((__unused_webpack_module, exports) => {
+/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
 
 "use strict";
+/* provided dependency */ var Buffer = __webpack_require__(/*! buffer */ "buffer")["Buffer"];
 
 /**
  * Copyright (c) Whales Corp.
@@ -10475,9 +10490,10 @@ exports.crc16 = crc16;
 /*!*****************************************************!*\
   !*** ./node_modules/@ton/core/dist/utils/crc32c.js ***!
   \*****************************************************/
-/***/ ((__unused_webpack_module, exports) => {
+/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
 
 "use strict";
+/* provided dependency */ var Buffer = __webpack_require__(/*! buffer */ "buffer")["Buffer"];
 
 /**
  * Copyright (c) Whales Corp.
@@ -10517,9 +10533,10 @@ exports.crc32c = crc32c;
 /*!**********************************************************!*\
   !*** ./node_modules/@ton/core/dist/utils/getMethodId.js ***!
   \**********************************************************/
-/***/ ((__unused_webpack_module, exports) => {
+/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
 
 "use strict";
+/* provided dependency */ var Buffer = __webpack_require__(/*! buffer */ "buffer")["Buffer"];
 
 /**
  * Copyright (c) Whales Corp.
@@ -10657,6 +10674,7 @@ exports.getSecureRandomWords = getSecureRandomWords;
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
+/* provided dependency */ var Buffer = __webpack_require__(/*! buffer */ "buffer")["Buffer"];
 
 /**
  * Copyright (c) Whales Corp.
@@ -10784,6 +10802,7 @@ exports.sha512 = sha512;
 /***/ ((__unused_webpack_module, exports, __webpack_require__) => {
 
 "use strict";
+/* provided dependency */ var Buffer = __webpack_require__(/*! buffer */ "buffer")["Buffer"];
 
 /**
  * Copyright (c) Whales Corp.
@@ -10849,6 +10868,7 @@ exports.deriveEd25519Path = deriveEd25519Path;
 /***/ ((__unused_webpack_module, exports, __webpack_require__) => {
 
 "use strict";
+/* provided dependency */ var Buffer = __webpack_require__(/*! buffer */ "buffer")["Buffer"];
 
 /**
  * Copyright (c) Whales Corp.
@@ -10914,6 +10934,7 @@ exports.deriveMnemonicsPath = deriveMnemonicsPath;
 /***/ ((__unused_webpack_module, exports, __webpack_require__) => {
 
 "use strict";
+/* provided dependency */ var Buffer = __webpack_require__(/*! buffer */ "buffer")["Buffer"];
 
 /**
  * Copyright (c) Whales Corp.
@@ -11040,6 +11061,7 @@ Object.defineProperty(exports, "getMnemonicsMasterKeyFromSeed", ({ enumerable: t
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
+/* provided dependency */ var Buffer = __webpack_require__(/*! buffer */ "buffer")["Buffer"];
 
 /**
  * Copyright (c) Whales Corp.
@@ -19249,6 +19271,7 @@ exports.getSecureRandomNumber = getSecureRandomNumber;
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
+/* provided dependency */ var Buffer = __webpack_require__(/*! buffer */ "buffer")["Buffer"];
 
 /**
  * Copyright (c) Whales Corp.
@@ -19290,6 +19313,7 @@ exports.hmac_sha512 = hmac_sha512;
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
+/* provided dependency */ var Buffer = __webpack_require__(/*! buffer */ "buffer")["Buffer"];
 
 /**
  * Copyright (c) Whales Corp.
@@ -19377,6 +19401,7 @@ exports.pbkdf2_sha512 = pbkdf2_sha512;
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
+/* provided dependency */ var Buffer = __webpack_require__(/*! buffer */ "buffer")["Buffer"];
 
 /**
  * Copyright (c) Whales Corp.
@@ -19425,6 +19450,7 @@ exports.sha256 = sha256;
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
+/* provided dependency */ var Buffer = __webpack_require__(/*! buffer */ "buffer")["Buffer"];
 
 /**
  * Copyright (c) Whales Corp.
@@ -19470,9 +19496,10 @@ exports.sha512 = sha512;
 /*!*******************************************************!*\
   !*** ./node_modules/@ton/crypto/dist/utils/binary.js ***!
   \*******************************************************/
-/***/ ((__unused_webpack_module, exports) => {
+/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
 
 "use strict";
+/* provided dependency */ var Buffer = __webpack_require__(/*! buffer */ "buffer")["Buffer"];
 
 /**
  * Copyright (c) Whales Corp.
@@ -27497,6 +27524,7 @@ exports.createMessageConnection = createMessageConnection;
 /***/ ((__unused_webpack_module, exports, __webpack_require__) => {
 
 "use strict";
+/* provided dependency */ var Buffer = __webpack_require__(/*! buffer */ "buffer")["Buffer"];
 
 /* --------------------------------------------------------------------------------------------
  * Copyright (c) Microsoft Corporation. All rights reserved.
@@ -44139,6 +44167,17 @@ exports.SetToolchainVersionNotification = "tact/setToolchainVersion";
 
 /***/ }),
 
+/***/ "buffer":
+/*!*************************!*\
+  !*** external "buffer" ***!
+  \*************************/
+/***/ ((module) => {
+
+"use strict";
+module.exports = require("buffer");
+
+/***/ }),
+
 /***/ "child_process":
 /*!********************************!*\
   !*** external "child_process" ***!
@@ -44302,6 +44341,7 @@ var exports = __webpack_exports__;
 /*!*********************************!*\
   !*** ./client/src/extension.ts ***!
   \*********************************/
+/* provided dependency */ var Buffer = __webpack_require__(/*! buffer */ "buffer")["Buffer"];
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.activate = activate;
