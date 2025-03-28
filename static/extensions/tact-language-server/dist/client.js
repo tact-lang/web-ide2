@@ -20887,7 +20887,6 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.TactTemplateTaskProvider = exports.BlueprintTaskProvider = void 0;
 exports.registerBuildTasks = registerBuildTasks;
 const vscode = __webpack_require__(/*! vscode */ "vscode");
-const path = __webpack_require__(/*! node:path */ "node:path");
 const fs_1 = __webpack_require__(/*! ./utils/fs */ "./client/src/utils/fs.ts");
 class BlueprintTaskProvider {
     constructor(id, name, command, group) {
@@ -21007,7 +21006,7 @@ async function projectUsesBlueprint() {
     const workspaceFolders = vscode.workspace.workspaceFolders;
     if (!workspaceFolders || workspaceFolders.length === 0)
         return false;
-    const packageJsonPath = path.join(workspaceFolders[0].uri.fsPath, "package.json");
+    const packageJsonPath = vscode.Uri.joinPath(workspaceFolders[0].uri, "package.json");
     try {
         const packageJson = JSON.parse(await (0, fs_1.readFile)(packageJsonPath));
         return (packageJson.dependencies?.["@ton/blueprint"] !== undefined ||
@@ -21158,7 +21157,6 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.registerSaveBocDecompiledCommand = registerSaveBocDecompiledCommand;
 exports.openBocFilePicker = openBocFilePicker;
 const vscode = __webpack_require__(/*! vscode */ "vscode");
-const path = __webpack_require__(/*! node:path */ "node:path");
 const fs = __webpack_require__(/*! ../utils/fs */ "./client/src/utils/fs.ts");
 const BocDecompilerProvider_1 = __webpack_require__(/*! ../providers/BocDecompilerProvider */ "./client/src/providers/BocDecompilerProvider.ts");
 function registerSaveBocDecompiledCommand(_context) {
@@ -21199,8 +21197,11 @@ async function saveBoc(fileUri) {
     const content = await decompiler.provideTextDocumentContent(decompileUri);
     const outputPath = actualFileUri.fsPath + ".decompiled.fif";
     await fs.writeFile(outputPath, content);
-    const relativePath = path.relative(vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? "", outputPath);
-    vscode.window.showInformationMessage(`Decompiled BOC saved to: ${relativePath}`);
+    const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri;
+    if (!workspaceRoot)
+        return;
+    const relativePath = vscode.Uri.joinPath(workspaceRoot, outputPath);
+    vscode.window.showInformationMessage(`Decompiled BOC saved to: ${relativePath.fsPath}`);
     const savedFileUri = vscode.Uri.file(outputPath);
     const doc = await vscode.workspace.openTextDocument(savedFileUri);
     await vscode.window.showTextDocument(doc, {
@@ -21366,7 +21367,7 @@ class BocFileSystemProvider {
     async readFile(uri) {
         console.log("Reading BOC file:", uri.fsPath);
         try {
-            const fileContent = await fs.readFile(uri.fsPath);
+            const fileContent = await fs.readFile(uri);
             console.log("File content length:", fileContent.length);
             const decompileUri = uri.with({
                 scheme: BocDecompilerProvider_1.BocDecompilerProvider.scheme,
@@ -21408,8 +21409,8 @@ exports.readFileRaw = readFileRaw;
 exports.writeFile = writeFile;
 exports.fileExists = fileExists;
 const vscode = __webpack_require__(/*! vscode */ "vscode");
-async function readFile(filePath) {
-    const contentArray = await vscode.workspace.fs.readFile(vscode.Uri.parse(filePath));
+async function readFile(uri) {
+    const contentArray = await vscode.workspace.fs.readFile(uri);
     return Buffer.from(contentArray).toString("utf8");
 }
 async function readFileRaw(filePath) {
@@ -21419,9 +21420,9 @@ async function readFileRaw(filePath) {
 async function writeFile(filePath, content) {
     await vscode.workspace.fs.writeFile(vscode.Uri.parse(filePath), Buffer.from(content));
 }
-async function fileExists(filePath) {
+async function fileExists(uri) {
     try {
-        await vscode.workspace.fs.readFile(vscode.Uri.parse(filePath));
+        await vscode.workspace.fs.readFile(uri);
         return true;
     }
     catch {
@@ -21443,29 +21444,28 @@ async function fileExists(filePath) {
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.detectPackageManager = detectPackageManager;
 const vscode = __webpack_require__(/*! vscode */ "vscode");
-const path = __webpack_require__(/*! node:path */ "node:path");
 const fs_1 = __webpack_require__(/*! ./fs */ "./client/src/utils/fs.ts");
 async function detectPackageManager() {
     const workspaceFolders = vscode.workspace.workspaceFolders;
     if (!workspaceFolders || workspaceFolders.length === 0)
         return "npm";
-    const workspaceRoot = workspaceFolders[0].uri.fsPath;
+    const workspaceRoot = workspaceFolders[0].uri;
     // Check for lock files
-    if (await (0, fs_1.fileExists)(path.join(workspaceRoot, "bun.lockb"))) {
+    if (await (0, fs_1.fileExists)(vscode.Uri.joinPath(workspaceRoot, "bun.lockb"))) {
         return "bun";
     }
-    if (await (0, fs_1.fileExists)(path.join(workspaceRoot, "yarn.lock"))) {
+    if (await (0, fs_1.fileExists)(vscode.Uri.joinPath(workspaceRoot, "yarn.lock"))) {
         return "yarn";
     }
-    if (await (0, fs_1.fileExists)(path.join(workspaceRoot, "pnpm-lock.yaml"))) {
+    if (await (0, fs_1.fileExists)(vscode.Uri.joinPath(workspaceRoot, "pnpm-lock.yaml"))) {
         return "pnpm";
     }
-    if (await (0, fs_1.fileExists)(path.join(workspaceRoot, "package-lock.json"))) {
+    if (await (0, fs_1.fileExists)(vscode.Uri.joinPath(workspaceRoot, "package-lock.json"))) {
         return "npm";
     }
     try {
-        const packageJsonPath = path.join(workspaceRoot, "package.json");
-        const packageJson = JSON.parse(await (0, fs_1.readFile)(packageJsonPath));
+        const packageJsonUri = vscode.Uri.joinPath(workspaceRoot, "package.json");
+        const packageJson = JSON.parse(await (0, fs_1.readFile)(packageJsonUri));
         if (packageJson.packageManager) {
             if (packageJson.packageManager.startsWith("bun")) {
                 return "bun";
@@ -43802,17 +43802,6 @@ module.exports = require("node:buffer");
 
 /***/ }),
 
-/***/ "node:path":
-/*!****************************!*\
-  !*** external "node:path" ***!
-  \****************************/
-/***/ ((module) => {
-
-"use strict";
-module.exports = require("node:path");
-
-/***/ }),
-
 /***/ "os":
 /*!*********************!*\
   !*** external "os" ***!
@@ -43927,7 +43916,6 @@ exports.activate = activate;
 exports.deactivate = deactivate;
 const vscode = __webpack_require__(/*! vscode */ "vscode");
 const vscode_1 = __webpack_require__(/*! vscode */ "vscode");
-const path = __webpack_require__(/*! node:path */ "node:path");
 const vscode_uri_1 = __webpack_require__(/*! vscode-uri */ "./node_modules/vscode-uri/lib/umd/index.js");
 const node_1 = __webpack_require__(/*! vscode-languageclient/node */ "./node_modules/vscode-languageclient/node.js");
 const client_log_1 = __webpack_require__(/*! ./client-log */ "./client/src/client-log.ts");
@@ -43988,7 +43976,7 @@ async function startServer(context) {
             fiftLangWasmUri: vscode_uri_1.Utils.joinPath(context.extensionUri, "./dist/tree-sitter-fift.wasm").fsPath,
         },
     };
-    const serverModule = context.asAbsolutePath(path.join("dist", "server.js"));
+    const serverModule = context.asAbsolutePath("dist/server.js");
     const serverOptions = {
         run: {
             module: serverModule,
@@ -44103,9 +44091,9 @@ async function projectUsesMisti() {
     const workspaceFolders = vscode.workspace.workspaceFolders;
     if (!workspaceFolders || workspaceFolders.length === 0)
         return false;
-    const packageJsonPath = path.join(workspaceFolders[0].uri.fsPath, "package.json");
+    const packageJsonPath = vscode.Uri.joinPath(workspaceFolders[0].uri, "package.json");
     try {
-        const contentArray = await vscode.workspace.fs.readFile(vscode_1.Uri.parse(packageJsonPath));
+        const contentArray = await vscode.workspace.fs.readFile(packageJsonPath);
         const content = Buffer.from(contentArray).toString("utf8");
         const packageJson = JSON.parse(content);
         return (packageJson.dependencies?.["@nowarp/misti"] !== undefined ||
