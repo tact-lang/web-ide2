@@ -239,7 +239,6 @@ function itemToString(item) {
 /***/ ((__unused_webpack_module, exports, __webpack_require__) => {
 
 "use strict";
-/* provided dependency */ var Buffer = __webpack_require__(/*! buffer */ "buffer")["Buffer"];
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.readFile = readFile;
@@ -249,14 +248,14 @@ exports.fileExists = fileExists;
 const vscode = __webpack_require__(/*! vscode */ "vscode");
 async function readFile(uri) {
     const contentArray = await vscode.workspace.fs.readFile(uri);
-    return Buffer.from(contentArray).toString("utf8");
+    return new TextDecoder().decode(contentArray);
 }
 async function readFileRaw(filePath) {
-    const contentArray = await vscode.workspace.fs.readFile(vscode.Uri.parse(filePath));
-    return Buffer.from(contentArray);
+    return vscode.workspace.fs.readFile(vscode.Uri.parse(filePath));
 }
 async function writeFile(filePath, content) {
-    await vscode.workspace.fs.writeFile(vscode.Uri.parse(filePath), Buffer.from(content));
+    const encoder = new TextEncoder();
+    await vscode.workspace.fs.writeFile(vscode.Uri.parse(filePath), encoder.encode(content));
 }
 async function fileExists(uri) {
     try {
@@ -22860,7 +22859,6 @@ var exports = __webpack_exports__;
 /*!*********************************!*\
   !*** ./client/src/extension.ts ***!
   \*********************************/
-/* provided dependency */ var Buffer = __webpack_require__(/*! buffer */ "buffer")["Buffer"];
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.activate = activate;
@@ -22966,7 +22964,7 @@ async function startServer(context, _params) {
     client.onRequest("tact.readFile", async (params) => {
         try {
             const data = await vscode.workspace.fs.readFile(vscode_1.Uri.parse(params.uri));
-            return Buffer.from(data).toString("utf8");
+            return new TextDecoder().decode(data);
         }
         catch { }
         // eslint-disable-next-line unicorn/no-useless-undefined
@@ -23055,7 +23053,7 @@ async function projectUsesMisti() {
     const packageJsonPath = vscode.Uri.joinPath(workspaceFolders[0].uri, "package.json");
     try {
         const contentArray = await vscode.workspace.fs.readFile(packageJsonPath);
-        const content = Buffer.from(contentArray).toString("utf8");
+        const content = new TextDecoder().decode(contentArray);
         const packageJson = JSON.parse(content);
         return (packageJson.dependencies?.["@nowarp/misti"] !== undefined ||
             packageJson.devDependencies?.["@nowarp/misti"] !== undefined);
