@@ -23921,6 +23921,277 @@ nacl.setPRNG = function(fn) {
 
 /***/ }),
 
+/***/ "./node_modules/vscode-jsonrpc/browser.js":
+/*!************************************************!*\
+  !*** ./node_modules/vscode-jsonrpc/browser.js ***!
+  \************************************************/
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
+
+"use strict";
+/* --------------------------------------------------------------------------------------------
+ * Copyright (c) Microsoft Corporation. All rights reserved.
+ * Licensed under the MIT License. See License.txt in the project root for license information.
+ * ----------------------------------------------------------------------------------------- */
+
+
+module.exports = __webpack_require__(/*! ./lib/browser/main */ "./node_modules/vscode-jsonrpc/lib/browser/main.js");
+
+/***/ }),
+
+/***/ "./node_modules/vscode-jsonrpc/lib/browser/main.js":
+/*!*********************************************************!*\
+  !*** ./node_modules/vscode-jsonrpc/lib/browser/main.js ***!
+  \*********************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+"use strict";
+
+/* --------------------------------------------------------------------------------------------
+ * Copyright (c) Microsoft Corporation. All rights reserved.
+ * Licensed under the MIT License. See License.txt in the project root for license information.
+ * ------------------------------------------------------------------------------------------ */
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __exportStar = (this && this.__exportStar) || function(m, exports) {
+    for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.createMessageConnection = exports.BrowserMessageWriter = exports.BrowserMessageReader = void 0;
+const ril_1 = __webpack_require__(/*! ./ril */ "./node_modules/vscode-jsonrpc/lib/browser/ril.js");
+// Install the browser runtime abstract.
+ril_1.default.install();
+const api_1 = __webpack_require__(/*! ../common/api */ "./node_modules/vscode-jsonrpc/lib/common/api.js");
+__exportStar(__webpack_require__(/*! ../common/api */ "./node_modules/vscode-jsonrpc/lib/common/api.js"), exports);
+class BrowserMessageReader extends api_1.AbstractMessageReader {
+    constructor(port) {
+        super();
+        this._onData = new api_1.Emitter();
+        this._messageListener = (event) => {
+            this._onData.fire(event.data);
+        };
+        port.addEventListener('error', (event) => this.fireError(event));
+        port.onmessage = this._messageListener;
+    }
+    listen(callback) {
+        return this._onData.event(callback);
+    }
+}
+exports.BrowserMessageReader = BrowserMessageReader;
+class BrowserMessageWriter extends api_1.AbstractMessageWriter {
+    constructor(port) {
+        super();
+        this.port = port;
+        this.errorCount = 0;
+        port.addEventListener('error', (event) => this.fireError(event));
+    }
+    write(msg) {
+        try {
+            this.port.postMessage(msg);
+            return Promise.resolve();
+        }
+        catch (error) {
+            this.handleError(error, msg);
+            return Promise.reject(error);
+        }
+    }
+    handleError(error, msg) {
+        this.errorCount++;
+        this.fireError(error, msg, this.errorCount);
+    }
+    end() {
+    }
+}
+exports.BrowserMessageWriter = BrowserMessageWriter;
+function createMessageConnection(reader, writer, logger, options) {
+    if (logger === undefined) {
+        logger = api_1.NullLogger;
+    }
+    if (api_1.ConnectionStrategy.is(options)) {
+        options = { connectionStrategy: options };
+    }
+    return (0, api_1.createMessageConnection)(reader, writer, logger, options);
+}
+exports.createMessageConnection = createMessageConnection;
+
+
+/***/ }),
+
+/***/ "./node_modules/vscode-jsonrpc/lib/browser/ril.js":
+/*!********************************************************!*\
+  !*** ./node_modules/vscode-jsonrpc/lib/browser/ril.js ***!
+  \********************************************************/
+/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
+
+"use strict";
+
+/* --------------------------------------------------------------------------------------------
+ * Copyright (c) Microsoft Corporation. All rights reserved.
+ * Licensed under the MIT License. See License.txt in the project root for license information.
+ * ------------------------------------------------------------------------------------------ */
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+const api_1 = __webpack_require__(/*! ../common/api */ "./node_modules/vscode-jsonrpc/lib/common/api.js");
+class MessageBuffer extends api_1.AbstractMessageBuffer {
+    constructor(encoding = 'utf-8') {
+        super(encoding);
+        this.asciiDecoder = new TextDecoder('ascii');
+    }
+    emptyBuffer() {
+        return MessageBuffer.emptyBuffer;
+    }
+    fromString(value, _encoding) {
+        return (new TextEncoder()).encode(value);
+    }
+    toString(value, encoding) {
+        if (encoding === 'ascii') {
+            return this.asciiDecoder.decode(value);
+        }
+        else {
+            return (new TextDecoder(encoding)).decode(value);
+        }
+    }
+    asNative(buffer, length) {
+        if (length === undefined) {
+            return buffer;
+        }
+        else {
+            return buffer.slice(0, length);
+        }
+    }
+    allocNative(length) {
+        return new Uint8Array(length);
+    }
+}
+MessageBuffer.emptyBuffer = new Uint8Array(0);
+class ReadableStreamWrapper {
+    constructor(socket) {
+        this.socket = socket;
+        this._onData = new api_1.Emitter();
+        this._messageListener = (event) => {
+            const blob = event.data;
+            blob.arrayBuffer().then((buffer) => {
+                this._onData.fire(new Uint8Array(buffer));
+            }, () => {
+                (0, api_1.RAL)().console.error(`Converting blob to array buffer failed.`);
+            });
+        };
+        this.socket.addEventListener('message', this._messageListener);
+    }
+    onClose(listener) {
+        this.socket.addEventListener('close', listener);
+        return api_1.Disposable.create(() => this.socket.removeEventListener('close', listener));
+    }
+    onError(listener) {
+        this.socket.addEventListener('error', listener);
+        return api_1.Disposable.create(() => this.socket.removeEventListener('error', listener));
+    }
+    onEnd(listener) {
+        this.socket.addEventListener('end', listener);
+        return api_1.Disposable.create(() => this.socket.removeEventListener('end', listener));
+    }
+    onData(listener) {
+        return this._onData.event(listener);
+    }
+}
+class WritableStreamWrapper {
+    constructor(socket) {
+        this.socket = socket;
+    }
+    onClose(listener) {
+        this.socket.addEventListener('close', listener);
+        return api_1.Disposable.create(() => this.socket.removeEventListener('close', listener));
+    }
+    onError(listener) {
+        this.socket.addEventListener('error', listener);
+        return api_1.Disposable.create(() => this.socket.removeEventListener('error', listener));
+    }
+    onEnd(listener) {
+        this.socket.addEventListener('end', listener);
+        return api_1.Disposable.create(() => this.socket.removeEventListener('end', listener));
+    }
+    write(data, encoding) {
+        if (typeof data === 'string') {
+            if (encoding !== undefined && encoding !== 'utf-8') {
+                throw new Error(`In a Browser environments only utf-8 text encoding is supported. But got encoding: ${encoding}`);
+            }
+            this.socket.send(data);
+        }
+        else {
+            this.socket.send(data);
+        }
+        return Promise.resolve();
+    }
+    end() {
+        this.socket.close();
+    }
+}
+const _textEncoder = new TextEncoder();
+const _ril = Object.freeze({
+    messageBuffer: Object.freeze({
+        create: (encoding) => new MessageBuffer(encoding)
+    }),
+    applicationJson: Object.freeze({
+        encoder: Object.freeze({
+            name: 'application/json',
+            encode: (msg, options) => {
+                if (options.charset !== 'utf-8') {
+                    throw new Error(`In a Browser environments only utf-8 text encoding is supported. But got encoding: ${options.charset}`);
+                }
+                return Promise.resolve(_textEncoder.encode(JSON.stringify(msg, undefined, 0)));
+            }
+        }),
+        decoder: Object.freeze({
+            name: 'application/json',
+            decode: (buffer, options) => {
+                if (!(buffer instanceof Uint8Array)) {
+                    throw new Error(`In a Browser environments only Uint8Arrays are supported.`);
+                }
+                return Promise.resolve(JSON.parse(new TextDecoder(options.charset).decode(buffer)));
+            }
+        })
+    }),
+    stream: Object.freeze({
+        asReadableStream: (socket) => new ReadableStreamWrapper(socket),
+        asWritableStream: (socket) => new WritableStreamWrapper(socket)
+    }),
+    console: console,
+    timer: Object.freeze({
+        setTimeout(callback, ms, ...args) {
+            const handle = setTimeout(callback, ms, ...args);
+            return { dispose: () => clearTimeout(handle) };
+        },
+        setImmediate(callback, ...args) {
+            const handle = setTimeout(callback, 0, ...args);
+            return { dispose: () => clearTimeout(handle) };
+        },
+        setInterval(callback, ms, ...args) {
+            const handle = setInterval(callback, ms, ...args);
+            return { dispose: () => clearInterval(handle) };
+        },
+    })
+});
+function RIL() {
+    return _ril;
+}
+(function (RIL) {
+    function install() {
+        api_1.RAL.install(_ril);
+    }
+    RIL.install = install;
+})(RIL || (RIL = {}));
+exports["default"] = RIL;
+
+
+/***/ }),
+
 /***/ "./node_modules/vscode-jsonrpc/lib/common/api.js":
 /*!*******************************************************!*\
   !*** ./node_modules/vscode-jsonrpc/lib/common/api.js ***!
@@ -27427,6 +27698,71 @@ exports["default"] = RIL;
 
 
 module.exports = __webpack_require__(/*! ./lib/node/main */ "./node_modules/vscode-jsonrpc/lib/node/main.js");
+
+/***/ }),
+
+/***/ "./node_modules/vscode-languageclient/browser.js":
+/*!*******************************************************!*\
+  !*** ./node_modules/vscode-languageclient/browser.js ***!
+  \*******************************************************/
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
+
+"use strict";
+/* --------------------------------------------------------------------------------------------
+ * Copyright (c) Microsoft Corporation. All rights reserved.
+ * Licensed under the MIT License. See License.txt in the project root for license information.
+ * ----------------------------------------------------------------------------------------- */
+
+
+module.exports = __webpack_require__(/*! ./lib/browser/main */ "./node_modules/vscode-languageclient/lib/browser/main.js");
+
+/***/ }),
+
+/***/ "./node_modules/vscode-languageclient/lib/browser/main.js":
+/*!****************************************************************!*\
+  !*** ./node_modules/vscode-languageclient/lib/browser/main.js ***!
+  \****************************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+"use strict";
+
+/* --------------------------------------------------------------------------------------------
+ * Copyright (c) Microsoft Corporation. All rights reserved.
+ * Licensed under the MIT License. See License.txt in the project root for license information.
+ * ------------------------------------------------------------------------------------------ */
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __exportStar = (this && this.__exportStar) || function(m, exports) {
+    for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.LanguageClient = void 0;
+const api_1 = __webpack_require__(/*! ../common/api */ "./node_modules/vscode-languageclient/lib/common/api.js");
+const browser_1 = __webpack_require__(/*! vscode-languageserver-protocol/browser */ "./node_modules/vscode-languageserver-protocol/browser.js");
+__exportStar(__webpack_require__(/*! vscode-languageserver-protocol/browser */ "./node_modules/vscode-languageserver-protocol/browser.js"), exports);
+__exportStar(__webpack_require__(/*! ../common/api */ "./node_modules/vscode-languageclient/lib/common/api.js"), exports);
+class LanguageClient extends api_1.BaseLanguageClient {
+    constructor(id, name, clientOptions, worker) {
+        super(id, name, clientOptions);
+        this.worker = worker;
+    }
+    createMessageTransports(_encoding) {
+        const reader = new browser_1.BrowserMessageReader(this.worker);
+        const writer = new browser_1.BrowserMessageWriter(this.worker);
+        return Promise.resolve({ reader, writer });
+    }
+}
+exports.LanguageClient = LanguageClient;
+
 
 /***/ }),
 
@@ -39053,6 +39389,62 @@ minimatch.Minimatch = Minimatch
 
 /***/ }),
 
+/***/ "./node_modules/vscode-languageserver-protocol/browser.js":
+/*!****************************************************************!*\
+  !*** ./node_modules/vscode-languageserver-protocol/browser.js ***!
+  \****************************************************************/
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
+
+"use strict";
+/* --------------------------------------------------------------------------------------------
+ * Copyright (c) Microsoft Corporation. All rights reserved.
+ * Licensed under the MIT License. See License.txt in the project root for license information.
+ * ----------------------------------------------------------------------------------------- */
+
+
+module.exports = __webpack_require__(/*! ./lib/browser/main */ "./node_modules/vscode-languageserver-protocol/lib/browser/main.js");
+
+/***/ }),
+
+/***/ "./node_modules/vscode-languageserver-protocol/lib/browser/main.js":
+/*!*************************************************************************!*\
+  !*** ./node_modules/vscode-languageserver-protocol/lib/browser/main.js ***!
+  \*************************************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+"use strict";
+
+/* --------------------------------------------------------------------------------------------
+ * Copyright (c) Microsoft Corporation. All rights reserved.
+ * Licensed under the MIT License. See License.txt in the project root for license information.
+ * ------------------------------------------------------------------------------------------ */
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __exportStar = (this && this.__exportStar) || function(m, exports) {
+    for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.createProtocolConnection = void 0;
+const browser_1 = __webpack_require__(/*! vscode-jsonrpc/browser */ "./node_modules/vscode-jsonrpc/browser.js");
+__exportStar(__webpack_require__(/*! vscode-jsonrpc/browser */ "./node_modules/vscode-jsonrpc/browser.js"), exports);
+__exportStar(__webpack_require__(/*! ../common/api */ "./node_modules/vscode-languageserver-protocol/lib/common/api.js"), exports);
+function createProtocolConnection(reader, writer, logger, options) {
+    return (0, browser_1.createMessageConnection)(reader, writer, logger, options);
+}
+exports.createProtocolConnection = createProtocolConnection;
+
+
+/***/ }),
+
 /***/ "./node_modules/vscode-languageserver-protocol/lib/common/api.js":
 /*!***********************************************************************!*\
   !*** ./node_modules/vscode-languageserver-protocol/lib/common/api.js ***!
@@ -43918,7 +44310,6 @@ exports.startServer = startServer;
 const vscode = __webpack_require__(/*! vscode */ "vscode");
 const vscode_1 = __webpack_require__(/*! vscode */ "vscode");
 const vscode_uri_1 = __webpack_require__(/*! vscode-uri */ "./node_modules/vscode-uri/lib/umd/index.js");
-const node_1 = __webpack_require__(/*! vscode-languageclient/node */ "./node_modules/vscode-languageclient/node.js");
 const client_log_1 = __webpack_require__(/*! ./client-log */ "./client/src/client-log.ts");
 const client_config_1 = __webpack_require__(/*! ./client-config */ "./client/src/client-config.ts");
 const shared_msgtypes_1 = __webpack_require__(/*! @shared/shared-msgtypes */ "./shared/src/shared-msgtypes.ts");
@@ -43960,39 +44351,67 @@ function deactivate() {
 }
 async function startServer(context, _params) {
     const disposables = [];
-    const clientOptions = {
-        outputChannel: (0, client_log_1.createClientLog)(),
-        revealOutputChannelOn: node_1.RevealOutputChannelOn.Never,
-        documentSelector: [
-            { scheme: "file", language: "tact" },
-            { scheme: "file", language: "fift" },
-            { scheme: "untitled", language: "tact" },
-        ],
-        synchronize: {
-            configurationSection: "tact",
-            fileEvents: vscode.workspace.createFileSystemWatcher("**/*.tact"),
-        },
-        initializationOptions: {
-            clientConfig: (0, client_config_1.getClientConfiguration)(),
-            treeSitterWasmUri: vscode_uri_1.Utils.joinPath(context.extensionUri, "./dist/tree-sitter.wasm")
-                .fsPath,
-            tactLangWasmUri: vscode_uri_1.Utils.joinPath(context.extensionUri, "./dist/tree-sitter-tact.wasm").fsPath,
-            fiftLangWasmUri: vscode_uri_1.Utils.joinPath(context.extensionUri, "./dist/tree-sitter-fift.wasm").fsPath,
-        },
-    };
-    const serverModule = context.asAbsolutePath("dist/server.js");
-    const serverOptions = {
-        run: {
-            module: serverModule,
-            transport: node_1.TransportKind.ipc,
-        },
-        debug: {
-            module: serverModule,
-            transport: node_1.TransportKind.ipc,
-            options: { execArgv: ["--nolazy", "--inspect=6009"] }, // same port as in .vscode/launch.json
-        },
-    };
-    client = new node_1.LanguageClient("tact-server", "Tact Language Server", serverOptions, clientOptions);
+    if (typeof globalThis === "undefined") {
+        const lspNode = await Promise.resolve().then(() => __webpack_require__(/*! vscode-languageclient/node */ "./node_modules/vscode-languageclient/node.js"));
+        const clientOptions = {
+            outputChannel: (0, client_log_1.createClientLog)(),
+            revealOutputChannelOn: lspNode.RevealOutputChannelOn.Never,
+            documentSelector: [
+                { scheme: "file", language: "tact" },
+                { scheme: "file", language: "fift" },
+                { scheme: "untitled", language: "tact" },
+            ],
+            synchronize: {
+                configurationSection: "tact",
+                fileEvents: vscode.workspace.createFileSystemWatcher("**/*.tact"),
+            },
+            initializationOptions: {
+                clientConfig: (0, client_config_1.getClientConfiguration)(),
+                treeSitterWasmUri: vscode_uri_1.Utils.joinPath(context.extensionUri, "./dist/tree-sitter.wasm")
+                    .fsPath,
+                tactLangWasmUri: vscode_uri_1.Utils.joinPath(context.extensionUri, "./dist/tree-sitter-tact.wasm").fsPath,
+                fiftLangWasmUri: vscode_uri_1.Utils.joinPath(context.extensionUri, "./dist/tree-sitter-fift.wasm").fsPath,
+            },
+        };
+        const serverModule = context.asAbsolutePath("dist/server.js");
+        const serverOptions = {
+            run: {
+                module: serverModule,
+                transport: lspNode.TransportKind.ipc,
+            },
+            debug: {
+                module: serverModule,
+                transport: lspNode.TransportKind.ipc,
+                options: { execArgv: ["--nolazy", "--inspect=6009"] }, // same port as in .vscode/launch.json
+            },
+        };
+        client = new lspNode.LanguageClient("tact-server", "Tact Language Server", serverOptions, clientOptions);
+    }
+    else {
+        const lspBrowser = await Promise.resolve().then(() => __webpack_require__(/*! vscode-languageclient/browser */ "./node_modules/vscode-languageclient/browser.js"));
+        const clientOptions = {
+            outputChannel: (0, client_log_1.createClientLog)(),
+            revealOutputChannelOn: lspBrowser.RevealOutputChannelOn.Never,
+            documentSelector: [
+                { scheme: "file", language: "tact" },
+                { scheme: "file", language: "fift" },
+                { scheme: "untitled", language: "tact" },
+            ],
+            synchronize: {
+                configurationSection: "tact",
+                fileEvents: vscode.workspace.createFileSystemWatcher("**/*.tact"),
+            },
+            initializationOptions: {
+                clientConfig: (0, client_config_1.getClientConfiguration)(),
+                treeSitterWasmUri: vscode_uri_1.Utils.joinPath(context.extensionUri, "./dist/tree-sitter.wasm")
+                    .fsPath,
+                tactLangWasmUri: vscode_uri_1.Utils.joinPath(context.extensionUri, "./dist/tree-sitter-tact.wasm").fsPath,
+                fiftLangWasmUri: vscode_uri_1.Utils.joinPath(context.extensionUri, "./dist/tree-sitter-fift.wasm").fsPath,
+            },
+        };
+        const worker = new Worker("dist/server.js");
+        client = new lspBrowser.LanguageClient("tact-server", "Tact Language Server", clientOptions, worker);
+    }
     await client.start();
     registerCommands(disposables);
     const langStatusBar = vscode.window.createStatusBarItem("Tact", vscode.StatusBarAlignment.Left, 60);
