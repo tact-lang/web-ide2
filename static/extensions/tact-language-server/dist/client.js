@@ -43914,6 +43914,7 @@ var exports = __webpack_exports__;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.activate = activate;
 exports.deactivate = deactivate;
+exports.startServer = startServer;
 const vscode = __webpack_require__(/*! vscode */ "vscode");
 const vscode_1 = __webpack_require__(/*! vscode */ "vscode");
 const vscode_uri_1 = __webpack_require__(/*! vscode-uri */ "./node_modules/vscode-uri/lib/umd/index.js");
@@ -43930,7 +43931,10 @@ const saveBocDecompiledCommand_1 = __webpack_require__(/*! ./commands/saveBocDec
 const package_manager_1 = __webpack_require__(/*! ./utils/package-manager */ "./client/src/utils/package-manager.ts");
 let client = null;
 async function activate(context) {
-    startServer(context).catch(client_log_1.consoleError);
+    const params = {
+        environment: typeof globalThis === "undefined" ? "node" : "browser"
+    };
+    startServer(context, params).catch(client_log_1.consoleError);
     await (0, build_system_1.registerBuildTasks)(context);
     (0, openBocCommand_1.registerOpenBocCommand)(context);
     (0, saveBocDecompiledCommand_1.registerSaveBocDecompiledCommand)(context);
@@ -43954,7 +43958,7 @@ function deactivate() {
     }
     return client.stop();
 }
-async function startServer(context) {
+async function startServer(context, _params) {
     const disposables = [];
     const clientOptions = {
         outputChannel: (0, client_log_1.createClientLog)(),

@@ -16656,9 +16656,26 @@ exports.TypeTlbSerializationCompletionProvider = TypeTlbSerializationCompletionP
 "use strict";
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.connection = void 0;
-const node_1 = __webpack_require__(/*! vscode-languageserver/node */ "./node_modules/vscode-languageserver/node.js");
-exports.connection = (0, node_1.createConnection)(node_1.ProposedFeatures.all);
+exports.connection = exports.openConnection = exports.isWeb = void 0;
+const lspBrowser = __webpack_require__(/*! vscode-languageserver/browser */ "./node_modules/vscode-languageserver/browser.js");
+const lspNode = __webpack_require__(/*! vscode-languageserver/node */ "./node_modules/vscode-languageserver/node.js");
+const isWeb = () => {
+    return typeof globalThis !== "undefined";
+};
+exports.isWeb = isWeb;
+const openConnection = () => {
+    if ((0, exports.isWeb)()) {
+        const messageReader = new lspBrowser.BrowserMessageReader(self);
+        const messageWriter = new lspBrowser.BrowserMessageWriter(self);
+        messageReader.listen((message) => {
+            console.log('Received message from main thread:', message);
+        });
+        return lspBrowser.createConnection(messageReader, messageWriter);
+    }
+    return lspNode.createConnection(lspBrowser.ProposedFeatures.all);
+};
+exports.openConnection = openConnection;
+exports.connection = (0, exports.openConnection)();
 
 
 /***/ }),
@@ -25514,6 +25531,277 @@ module.exports = process
 
 /***/ }),
 
+/***/ "./node_modules/vscode-jsonrpc/browser.js":
+/*!************************************************!*\
+  !*** ./node_modules/vscode-jsonrpc/browser.js ***!
+  \************************************************/
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
+
+"use strict";
+/* --------------------------------------------------------------------------------------------
+ * Copyright (c) Microsoft Corporation. All rights reserved.
+ * Licensed under the MIT License. See License.txt in the project root for license information.
+ * ----------------------------------------------------------------------------------------- */
+
+
+module.exports = __webpack_require__(/*! ./lib/browser/main */ "./node_modules/vscode-jsonrpc/lib/browser/main.js");
+
+/***/ }),
+
+/***/ "./node_modules/vscode-jsonrpc/lib/browser/main.js":
+/*!*********************************************************!*\
+  !*** ./node_modules/vscode-jsonrpc/lib/browser/main.js ***!
+  \*********************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+"use strict";
+
+/* --------------------------------------------------------------------------------------------
+ * Copyright (c) Microsoft Corporation. All rights reserved.
+ * Licensed under the MIT License. See License.txt in the project root for license information.
+ * ------------------------------------------------------------------------------------------ */
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __exportStar = (this && this.__exportStar) || function(m, exports) {
+    for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.createMessageConnection = exports.BrowserMessageWriter = exports.BrowserMessageReader = void 0;
+const ril_1 = __webpack_require__(/*! ./ril */ "./node_modules/vscode-jsonrpc/lib/browser/ril.js");
+// Install the browser runtime abstract.
+ril_1.default.install();
+const api_1 = __webpack_require__(/*! ../common/api */ "./node_modules/vscode-jsonrpc/lib/common/api.js");
+__exportStar(__webpack_require__(/*! ../common/api */ "./node_modules/vscode-jsonrpc/lib/common/api.js"), exports);
+class BrowserMessageReader extends api_1.AbstractMessageReader {
+    constructor(port) {
+        super();
+        this._onData = new api_1.Emitter();
+        this._messageListener = (event) => {
+            this._onData.fire(event.data);
+        };
+        port.addEventListener('error', (event) => this.fireError(event));
+        port.onmessage = this._messageListener;
+    }
+    listen(callback) {
+        return this._onData.event(callback);
+    }
+}
+exports.BrowserMessageReader = BrowserMessageReader;
+class BrowserMessageWriter extends api_1.AbstractMessageWriter {
+    constructor(port) {
+        super();
+        this.port = port;
+        this.errorCount = 0;
+        port.addEventListener('error', (event) => this.fireError(event));
+    }
+    write(msg) {
+        try {
+            this.port.postMessage(msg);
+            return Promise.resolve();
+        }
+        catch (error) {
+            this.handleError(error, msg);
+            return Promise.reject(error);
+        }
+    }
+    handleError(error, msg) {
+        this.errorCount++;
+        this.fireError(error, msg, this.errorCount);
+    }
+    end() {
+    }
+}
+exports.BrowserMessageWriter = BrowserMessageWriter;
+function createMessageConnection(reader, writer, logger, options) {
+    if (logger === undefined) {
+        logger = api_1.NullLogger;
+    }
+    if (api_1.ConnectionStrategy.is(options)) {
+        options = { connectionStrategy: options };
+    }
+    return (0, api_1.createMessageConnection)(reader, writer, logger, options);
+}
+exports.createMessageConnection = createMessageConnection;
+
+
+/***/ }),
+
+/***/ "./node_modules/vscode-jsonrpc/lib/browser/ril.js":
+/*!********************************************************!*\
+  !*** ./node_modules/vscode-jsonrpc/lib/browser/ril.js ***!
+  \********************************************************/
+/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
+
+"use strict";
+
+/* --------------------------------------------------------------------------------------------
+ * Copyright (c) Microsoft Corporation. All rights reserved.
+ * Licensed under the MIT License. See License.txt in the project root for license information.
+ * ------------------------------------------------------------------------------------------ */
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+const api_1 = __webpack_require__(/*! ../common/api */ "./node_modules/vscode-jsonrpc/lib/common/api.js");
+class MessageBuffer extends api_1.AbstractMessageBuffer {
+    constructor(encoding = 'utf-8') {
+        super(encoding);
+        this.asciiDecoder = new TextDecoder('ascii');
+    }
+    emptyBuffer() {
+        return MessageBuffer.emptyBuffer;
+    }
+    fromString(value, _encoding) {
+        return (new TextEncoder()).encode(value);
+    }
+    toString(value, encoding) {
+        if (encoding === 'ascii') {
+            return this.asciiDecoder.decode(value);
+        }
+        else {
+            return (new TextDecoder(encoding)).decode(value);
+        }
+    }
+    asNative(buffer, length) {
+        if (length === undefined) {
+            return buffer;
+        }
+        else {
+            return buffer.slice(0, length);
+        }
+    }
+    allocNative(length) {
+        return new Uint8Array(length);
+    }
+}
+MessageBuffer.emptyBuffer = new Uint8Array(0);
+class ReadableStreamWrapper {
+    constructor(socket) {
+        this.socket = socket;
+        this._onData = new api_1.Emitter();
+        this._messageListener = (event) => {
+            const blob = event.data;
+            blob.arrayBuffer().then((buffer) => {
+                this._onData.fire(new Uint8Array(buffer));
+            }, () => {
+                (0, api_1.RAL)().console.error(`Converting blob to array buffer failed.`);
+            });
+        };
+        this.socket.addEventListener('message', this._messageListener);
+    }
+    onClose(listener) {
+        this.socket.addEventListener('close', listener);
+        return api_1.Disposable.create(() => this.socket.removeEventListener('close', listener));
+    }
+    onError(listener) {
+        this.socket.addEventListener('error', listener);
+        return api_1.Disposable.create(() => this.socket.removeEventListener('error', listener));
+    }
+    onEnd(listener) {
+        this.socket.addEventListener('end', listener);
+        return api_1.Disposable.create(() => this.socket.removeEventListener('end', listener));
+    }
+    onData(listener) {
+        return this._onData.event(listener);
+    }
+}
+class WritableStreamWrapper {
+    constructor(socket) {
+        this.socket = socket;
+    }
+    onClose(listener) {
+        this.socket.addEventListener('close', listener);
+        return api_1.Disposable.create(() => this.socket.removeEventListener('close', listener));
+    }
+    onError(listener) {
+        this.socket.addEventListener('error', listener);
+        return api_1.Disposable.create(() => this.socket.removeEventListener('error', listener));
+    }
+    onEnd(listener) {
+        this.socket.addEventListener('end', listener);
+        return api_1.Disposable.create(() => this.socket.removeEventListener('end', listener));
+    }
+    write(data, encoding) {
+        if (typeof data === 'string') {
+            if (encoding !== undefined && encoding !== 'utf-8') {
+                throw new Error(`In a Browser environments only utf-8 text encoding is supported. But got encoding: ${encoding}`);
+            }
+            this.socket.send(data);
+        }
+        else {
+            this.socket.send(data);
+        }
+        return Promise.resolve();
+    }
+    end() {
+        this.socket.close();
+    }
+}
+const _textEncoder = new TextEncoder();
+const _ril = Object.freeze({
+    messageBuffer: Object.freeze({
+        create: (encoding) => new MessageBuffer(encoding)
+    }),
+    applicationJson: Object.freeze({
+        encoder: Object.freeze({
+            name: 'application/json',
+            encode: (msg, options) => {
+                if (options.charset !== 'utf-8') {
+                    throw new Error(`In a Browser environments only utf-8 text encoding is supported. But got encoding: ${options.charset}`);
+                }
+                return Promise.resolve(_textEncoder.encode(JSON.stringify(msg, undefined, 0)));
+            }
+        }),
+        decoder: Object.freeze({
+            name: 'application/json',
+            decode: (buffer, options) => {
+                if (!(buffer instanceof Uint8Array)) {
+                    throw new Error(`In a Browser environments only Uint8Arrays are supported.`);
+                }
+                return Promise.resolve(JSON.parse(new TextDecoder(options.charset).decode(buffer)));
+            }
+        })
+    }),
+    stream: Object.freeze({
+        asReadableStream: (socket) => new ReadableStreamWrapper(socket),
+        asWritableStream: (socket) => new WritableStreamWrapper(socket)
+    }),
+    console: console,
+    timer: Object.freeze({
+        setTimeout(callback, ms, ...args) {
+            const handle = setTimeout(callback, ms, ...args);
+            return { dispose: () => clearTimeout(handle) };
+        },
+        setImmediate(callback, ...args) {
+            const handle = setTimeout(callback, 0, ...args);
+            return { dispose: () => clearTimeout(handle) };
+        },
+        setInterval(callback, ms, ...args) {
+            const handle = setInterval(callback, ms, ...args);
+            return { dispose: () => clearInterval(handle) };
+        },
+    })
+});
+function RIL() {
+    return _ril;
+}
+(function (RIL) {
+    function install() {
+        api_1.RAL.install(_ril);
+    }
+    RIL.install = install;
+})(RIL || (RIL = {}));
+exports["default"] = RIL;
+
+
+/***/ }),
+
 /***/ "./node_modules/vscode-jsonrpc/lib/common/api.js":
 /*!*******************************************************!*\
   !*** ./node_modules/vscode-jsonrpc/lib/common/api.js ***!
@@ -29020,6 +29308,62 @@ exports["default"] = RIL;
 
 
 module.exports = __webpack_require__(/*! ./lib/node/main */ "./node_modules/vscode-jsonrpc/lib/node/main.js");
+
+/***/ }),
+
+/***/ "./node_modules/vscode-languageserver-protocol/browser.js":
+/*!****************************************************************!*\
+  !*** ./node_modules/vscode-languageserver-protocol/browser.js ***!
+  \****************************************************************/
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
+
+"use strict";
+/* --------------------------------------------------------------------------------------------
+ * Copyright (c) Microsoft Corporation. All rights reserved.
+ * Licensed under the MIT License. See License.txt in the project root for license information.
+ * ----------------------------------------------------------------------------------------- */
+
+
+module.exports = __webpack_require__(/*! ./lib/browser/main */ "./node_modules/vscode-languageserver-protocol/lib/browser/main.js");
+
+/***/ }),
+
+/***/ "./node_modules/vscode-languageserver-protocol/lib/browser/main.js":
+/*!*************************************************************************!*\
+  !*** ./node_modules/vscode-languageserver-protocol/lib/browser/main.js ***!
+  \*************************************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+"use strict";
+
+/* --------------------------------------------------------------------------------------------
+ * Copyright (c) Microsoft Corporation. All rights reserved.
+ * Licensed under the MIT License. See License.txt in the project root for license information.
+ * ------------------------------------------------------------------------------------------ */
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __exportStar = (this && this.__exportStar) || function(m, exports) {
+    for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.createProtocolConnection = void 0;
+const browser_1 = __webpack_require__(/*! vscode-jsonrpc/browser */ "./node_modules/vscode-jsonrpc/browser.js");
+__exportStar(__webpack_require__(/*! vscode-jsonrpc/browser */ "./node_modules/vscode-jsonrpc/browser.js"), exports);
+__exportStar(__webpack_require__(/*! ../common/api */ "./node_modules/vscode-languageserver-protocol/lib/common/api.js"), exports);
+function createProtocolConnection(reader, writer, logger, options) {
+    return (0, browser_1.createMessageConnection)(reader, writer, logger, options);
+}
+exports.createProtocolConnection = createProtocolConnection;
+
 
 /***/ }),
 
@@ -33691,6 +34035,96 @@ var Is;
     }
     Is.typedArray = typedArray;
 })(Is || (Is = {}));
+
+
+/***/ }),
+
+/***/ "./node_modules/vscode-languageserver/browser.js":
+/*!*******************************************************!*\
+  !*** ./node_modules/vscode-languageserver/browser.js ***!
+  \*******************************************************/
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
+
+"use strict";
+/* --------------------------------------------------------------------------------------------
+ * Copyright (c) Microsoft Corporation. All rights reserved.
+ * Licensed under the MIT License. See License.txt in the project root for license information.
+ * ----------------------------------------------------------------------------------------- */
+
+
+module.exports = __webpack_require__(/*! ./lib/browser/main */ "./node_modules/vscode-languageserver/lib/browser/main.js");
+
+/***/ }),
+
+/***/ "./node_modules/vscode-languageserver/lib/browser/main.js":
+/*!****************************************************************!*\
+  !*** ./node_modules/vscode-languageserver/lib/browser/main.js ***!
+  \****************************************************************/
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+"use strict";
+
+/* --------------------------------------------------------------------------------------------
+ * Copyright (c) Microsoft Corporation. All rights reserved.
+ * Licensed under the MIT License. See License.txt in the project root for license information.
+ * ------------------------------------------------------------------------------------------ */
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __exportStar = (this && this.__exportStar) || function(m, exports) {
+    for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.createConnection = void 0;
+const api_1 = __webpack_require__(/*! ../common/api */ "./node_modules/vscode-languageserver/lib/common/api.js");
+__exportStar(__webpack_require__(/*! vscode-languageserver-protocol/browser */ "./node_modules/vscode-languageserver-protocol/browser.js"), exports);
+__exportStar(__webpack_require__(/*! ../common/api */ "./node_modules/vscode-languageserver/lib/common/api.js"), exports);
+let _shutdownReceived = false;
+const watchDog = {
+    initialize: (_params) => {
+    },
+    get shutdownReceived() {
+        return _shutdownReceived;
+    },
+    set shutdownReceived(value) {
+        _shutdownReceived = value;
+    },
+    exit: (_code) => {
+    }
+};
+function createConnection(arg1, arg2, arg3, arg4) {
+    let factories;
+    let reader;
+    let writer;
+    let options;
+    if (arg1 !== void 0 && arg1.__brand === 'features') {
+        factories = arg1;
+        arg1 = arg2;
+        arg2 = arg3;
+        arg3 = arg4;
+    }
+    if (api_1.ConnectionStrategy.is(arg1) || api_1.ConnectionOptions.is(arg1)) {
+        options = arg1;
+    }
+    else {
+        reader = arg1;
+        writer = arg2;
+        options = arg3;
+    }
+    const connectionFactory = (logger) => {
+        return (0, api_1.createProtocolConnection)(reader, writer, logger, options);
+    };
+    return (0, api_1.createConnection)(connectionFactory, watchDog, factories);
+}
+exports.createConnection = createConnection;
 
 
 /***/ }),
