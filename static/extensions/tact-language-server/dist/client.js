@@ -20067,7 +20067,7 @@ async function startServer(context, _params) {
                 fiftLangWasmUri: vscode_uri_1.Utils.joinPath(context.extensionUri, "./dist/tree-sitter-fift.wasm").fsPath,
             },
         };
-        const worker = new Worker(vscode_uri_1.Utils.joinPath(context.extensionUri, "./dist/server.js").fsPath);
+        const worker = new Worker(new URL("dist/server.js", context.extensionUri.path));
         client = new lspBrowser.LanguageClient("tact-server", "Tact Language Server", clientOptions, worker);
     }
     await client.start();
