@@ -7798,7 +7798,7 @@ function expand(str, isTop) {
     ? expand(m.post, false)
     : [''];
 
-  if (/\$$/.test(m.pre)) {    
+  if (/\$$/.test(m.pre)) {
     for (var k = 0; k < post.length; k++) {
       var expansion = pre+ '{' + m.body + '}' + post[k];
       expansions.push(expansion);
@@ -29321,7 +29321,7 @@ module.exports = /*#__PURE__*/JSON.parse('{"name":"elliptic","version":"6.6.1","
 /***/ ((module) => {
 
 // Empty module for webpack to use as a replacement for unsupported Node.js modules
-module.exports = {} 
+module.exports = {}
 
 /***/ }),
 
@@ -32952,7 +32952,7 @@ class AST {
                         const aps = addPatternStart;
                         // check if we have a possibility of matching . or ..,
                         // and prevent that.
-                        const needNoTrav = 
+                        const needNoTrav =
                         // dots are allowed, and the pattern starts with [ or .
                         (dot && aps.has(src.charAt(0))) ||
                             // the pattern starts with \., and then [ or .
@@ -52970,7 +52970,7 @@ class PathScurry {
     }
 }
 
-module.exports = PathScurry 
+module.exports = PathScurry
 
 /***/ }),
 
@@ -65028,13 +65028,13 @@ Script.prototype.runInContext = function (context) {
     if (!(context instanceof Context)) {
         throw new TypeError("needs a 'context' argument.");
     }
-    
+
     var iframe = document.createElement('iframe');
     if (!iframe.style) iframe.style = {};
     iframe.style.display = 'none';
-    
+
     document.body.appendChild(iframe);
-    
+
     var win = iframe.contentWindow;
     var wEval = win.eval, wExecScript = win.execScript;
 
@@ -65043,7 +65043,7 @@ Script.prototype.runInContext = function (context) {
         wExecScript.call(win, 'null');
         wEval = win.eval;
     }
-    
+
     forEach(Object_keys(context), function (key) {
         win[key] = context[key];
     });
@@ -65052,11 +65052,11 @@ Script.prototype.runInContext = function (context) {
             win[key] = context[key];
         }
     });
-    
+
     var winKeys = Object_keys(win);
 
     var res = wEval.call(win, this.code);
-    
+
     forEach(Object_keys(win), function (key) {
         // Avoid copying circular objects like `top` and `window` by only
         // updating existing context properties or new properties in the `win`
@@ -65071,9 +65071,9 @@ Script.prototype.runInContext = function (context) {
             defineProp(context, key, win[key]);
         }
     });
-    
+
     document.body.removeChild(iframe);
-    
+
     return res;
 };
 
@@ -83267,7 +83267,7 @@ class DocumentStore extends vscode_languageserver_1.TextDocuments {
                         text: change.text,
                         range: change.range,
                         rangeOffset,
-                        rangeLength: 
+                        rangeLength:
                         // eslint-disable-next-line @typescript-eslint/no-deprecated
                         change.rangeLength ?? doc.offsetAt(change.range.end) - rangeOffset,
                     });
@@ -91078,7 +91078,7 @@ exports.SetToolchainVersionNotification = "tact/setToolchainVersion";
 /************************************************************************/
 /******/ 	// The module cache
 /******/ 	var __webpack_module_cache__ = {};
-/******/ 	
+/******/
 /******/ 	// The require function
 /******/ 	function __webpack_require__(moduleId) {
 /******/ 		// Check if module is in cache
@@ -91092,17 +91092,17 @@ exports.SetToolchainVersionNotification = "tact/setToolchainVersion";
 /******/ 			loaded: false,
 /******/ 			exports: {}
 /******/ 		};
-/******/ 	
+/******/
 /******/ 		// Execute the module function
 /******/ 		__webpack_modules__[moduleId].call(module.exports, module, module.exports, __webpack_require__);
-/******/ 	
+/******/
 /******/ 		// Flag the module as loaded
 /******/ 		module.loaded = true;
-/******/ 	
+/******/
 /******/ 		// Return the exports of the module
 /******/ 		return module.exports;
 /******/ 	}
-/******/ 	
+/******/
 /************************************************************************/
 /******/ 	/* webpack/runtime/compat get default export */
 /******/ 	(() => {
@@ -91115,7 +91115,7 @@ exports.SetToolchainVersionNotification = "tact/setToolchainVersion";
 /******/ 			return getter;
 /******/ 		};
 /******/ 	})();
-/******/ 	
+/******/
 /******/ 	/* webpack/runtime/define property getters */
 /******/ 	(() => {
 /******/ 		// define getter functions for harmony exports
@@ -91127,7 +91127,7 @@ exports.SetToolchainVersionNotification = "tact/setToolchainVersion";
 /******/ 			}
 /******/ 		};
 /******/ 	})();
-/******/ 	
+/******/
 /******/ 	/* webpack/runtime/global */
 /******/ 	(() => {
 /******/ 		__webpack_require__.g = (function() {
@@ -91139,12 +91139,12 @@ exports.SetToolchainVersionNotification = "tact/setToolchainVersion";
 /******/ 			}
 /******/ 		})();
 /******/ 	})();
-/******/ 	
+/******/
 /******/ 	/* webpack/runtime/hasOwnProperty shorthand */
 /******/ 	(() => {
 /******/ 		__webpack_require__.o = (obj, prop) => (Object.prototype.hasOwnProperty.call(obj, prop))
 /******/ 	})();
-/******/ 	
+/******/
 /******/ 	/* webpack/runtime/make namespace object */
 /******/ 	(() => {
 /******/ 		// define __esModule on exports
@@ -91155,7 +91155,7 @@ exports.SetToolchainVersionNotification = "tact/setToolchainVersion";
 /******/ 			Object.defineProperty(exports, '__esModule', { value: true });
 /******/ 		};
 /******/ 	})();
-/******/ 	
+/******/
 /******/ 	/* webpack/runtime/node module decorator */
 /******/ 	(() => {
 /******/ 		__webpack_require__.nmd = (module) => {
@@ -91164,7 +91164,7 @@ exports.SetToolchainVersionNotification = "tact/setToolchainVersion";
 /******/ 			return module;
 /******/ 		};
 /******/ 	})();
-/******/ 	
+/******/
 /************************************************************************/
 var __webpack_exports__ = {};
 // This entry needs to be wrapped in an IIFE because it needs to be in strict mode.
@@ -92645,6 +92645,7 @@ connection_1.connection.listen();
 
 })();
 
+var exports = {}
 exports.__esModule = __webpack_exports__.__esModule;
 Object.defineProperty(exports, "__esModule", { value: true });
 /******/ })()
