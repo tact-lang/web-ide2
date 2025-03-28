@@ -22889,10 +22889,11 @@ function deactivate() {
 }
 async function startServer(context, _params) {
     const disposables = [];
+    const outputChannel = (0, client_log_1.createClientLog)();
     if (typeof globalThis === "undefined") {
         const lspNode = await Promise.resolve().then(() => __webpack_require__(/*! vscode-languageclient/node */ "./node_modules/vscode-languageclient/node.js"));
         const clientOptions = {
-            outputChannel: (0, client_log_1.createClientLog)(),
+            outputChannel: outputChannel,
             revealOutputChannelOn: lspNode.RevealOutputChannelOn.Never,
             documentSelector: [
                 { scheme: "file", language: "tact" },
@@ -22927,7 +22928,7 @@ async function startServer(context, _params) {
     else {
         const lspBrowser = await Promise.resolve().then(() => __webpack_require__(/*! vscode-languageclient/browser */ "./node_modules/vscode-languageclient/browser.js"));
         const clientOptions = {
-            outputChannel: (0, client_log_1.createClientLog)(),
+            outputChannel,
             revealOutputChannelOn: lspBrowser.RevealOutputChannelOn.Never,
             documentSelector: [
                 { scheme: "file", language: "tact" },
