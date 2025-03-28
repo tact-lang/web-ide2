@@ -20887,8 +20887,8 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.TactTemplateTaskProvider = exports.BlueprintTaskProvider = void 0;
 exports.registerBuildTasks = registerBuildTasks;
 const vscode = __webpack_require__(/*! vscode */ "vscode");
-const fs = __webpack_require__(/*! node:fs */ "node:fs");
 const path = __webpack_require__(/*! node:path */ "node:path");
+const fs_1 = __webpack_require__(/*! ./utils/fs */ "./client/src/utils/fs.ts");
 class BlueprintTaskProvider {
     constructor(id, name, command, group) {
         this.taskType = `blueprint-${id}`;
@@ -20896,13 +20896,13 @@ class BlueprintTaskProvider {
         this.command = command;
         this.group = group;
     }
-    provideTasks() {
-        const isAvailable = this.isAvailable();
+    async provideTasks() {
+        const isAvailable = await this.isAvailable();
         if (!isAvailable)
             return [];
         return [this.createTask()];
     }
-    isAvailable() {
+    async isAvailable() {
         return projectUsesBlueprint();
     }
     resolveTask(task) {
@@ -20940,11 +20940,11 @@ class TactTemplateTaskProvider {
         this.command = command;
         this.group = group;
     }
-    isAvailable() {
-        return !projectUsesBlueprint();
+    async isAvailable() {
+        return !(await projectUsesBlueprint());
     }
-    provideTasks() {
-        const isAvailable = this.isAvailable();
+    async provideTasks() {
+        const isAvailable = await this.isAvailable();
         if (!isAvailable)
             return [];
         return [this.createTask()];
@@ -20977,20 +20977,20 @@ class TactTemplateTaskProvider {
     }
 }
 exports.TactTemplateTaskProvider = TactTemplateTaskProvider;
-function registerTaskProvider(context, provider) {
-    if (!provider.isAvailable())
+async function registerTaskProvider(context, provider) {
+    if (!(await provider.isAvailable()))
         return;
     const taskProviderDisposable = vscode.tasks.registerTaskProvider(provider.taskType, provider);
     context.subscriptions.push(taskProviderDisposable);
 }
-function registerBuildTasks(context) {
-    registerTaskProvider(context, new BlueprintTaskProvider("build", "build", "npx blueprint build", vscode.TaskGroup.Build));
-    registerTaskProvider(context, new BlueprintTaskProvider("build-all", "build all contracts", "npx blueprint build --all", vscode.TaskGroup.Build));
-    registerTaskProvider(context, new BlueprintTaskProvider("test", "test", "npx blueprint test", vscode.TaskGroup.Test));
-    registerTaskProvider(context, new BlueprintTaskProvider("build-and-test-all", "build and test all contracts", "npx blueprint build --all && npx blueprint test", vscode.TaskGroup.Build));
-    registerTaskProvider(context, new TactTemplateTaskProvider("build", "build", "yarn build", vscode.TaskGroup.Build));
-    registerTaskProvider(context, new TactTemplateTaskProvider("test", "test", "yarn test", vscode.TaskGroup.Test));
-    registerTaskProvider(context, new TactTemplateTaskProvider("build-and-test", "build and test", "yarn build && yarn test", vscode.TaskGroup.Build));
+async function registerBuildTasks(context) {
+    await registerTaskProvider(context, new BlueprintTaskProvider("build", "build", "npx blueprint build", vscode.TaskGroup.Build));
+    await registerTaskProvider(context, new BlueprintTaskProvider("build-all", "build all contracts", "npx blueprint build --all", vscode.TaskGroup.Build));
+    await registerTaskProvider(context, new BlueprintTaskProvider("test", "test", "npx blueprint test", vscode.TaskGroup.Test));
+    await registerTaskProvider(context, new BlueprintTaskProvider("build-and-test-all", "build and test all contracts", "npx blueprint build --all && npx blueprint test", vscode.TaskGroup.Build));
+    await registerTaskProvider(context, new TactTemplateTaskProvider("build", "build", "yarn build", vscode.TaskGroup.Build));
+    await registerTaskProvider(context, new TactTemplateTaskProvider("test", "test", "yarn test", vscode.TaskGroup.Test));
+    await registerTaskProvider(context, new TactTemplateTaskProvider("build-and-test", "build and test", "yarn build && yarn test", vscode.TaskGroup.Build));
     context.subscriptions.push(vscode.commands.registerCommand("tact.build", async () => {
         const tasks = await vscode.tasks.fetchTasks();
         const buildTask = tasks.find(task => task.group === vscode.TaskGroup.Build &&
@@ -21003,13 +21003,13 @@ function registerBuildTasks(context) {
         }
     }));
 }
-function projectUsesBlueprint() {
+async function projectUsesBlueprint() {
     const workspaceFolders = vscode.workspace.workspaceFolders;
     if (!workspaceFolders || workspaceFolders.length === 0)
         return false;
     const packageJsonPath = path.join(workspaceFolders[0].uri.fsPath, "package.json");
     try {
-        const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf8"));
+        const packageJson = JSON.parse(await (0, fs_1.readFile)(packageJsonPath));
         return (packageJson.dependencies?.["@ton/blueprint"] !== undefined ||
             packageJson.devDependencies?.["@ton/blueprint"] !== undefined);
     }
@@ -21159,7 +21159,7 @@ exports.registerSaveBocDecompiledCommand = registerSaveBocDecompiledCommand;
 exports.openBocFilePicker = openBocFilePicker;
 const vscode = __webpack_require__(/*! vscode */ "vscode");
 const path = __webpack_require__(/*! node:path */ "node:path");
-const fs = __webpack_require__(/*! node:fs */ "node:fs");
+const fs = __webpack_require__(/*! ../utils/fs */ "./client/src/utils/fs.ts");
 const BocDecompilerProvider_1 = __webpack_require__(/*! ../providers/BocDecompilerProvider */ "./client/src/providers/BocDecompilerProvider.ts");
 function registerSaveBocDecompiledCommand(_context) {
     return vscode.commands.registerCommand("tact.saveBocDecompiled", async (fileUri) => {
@@ -21196,9 +21196,9 @@ async function saveBoc(fileUri) {
         scheme: BocDecompilerProvider_1.BocDecompilerProvider.scheme,
         path: actualFileUri.path + ".decompiled.fif",
     });
-    const content = decompiler.provideTextDocumentContent(decompileUri);
+    const content = await decompiler.provideTextDocumentContent(decompileUri);
     const outputPath = actualFileUri.fsPath + ".decompiled.fif";
-    fs.writeFileSync(outputPath, content);
+    await fs.writeFile(outputPath, content);
     const relativePath = path.relative(vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? "", outputPath);
     vscode.window.showInformationMessage(`Decompiled BOC saved to: ${relativePath}`);
     const savedFileUri = vscode.Uri.file(outputPath);
@@ -21223,17 +21223,17 @@ async function saveBoc(fileUri) {
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.BocDecompilerProvider = void 0;
 const vscode = __webpack_require__(/*! vscode */ "vscode");
+const fs = __webpack_require__(/*! ../utils/fs */ "./client/src/utils/fs.ts");
 const opcode_1 = __webpack_require__(/*! @tact-lang/opcode */ "./node_modules/@tact-lang/opcode/dist/index.js");
-const node_fs_1 = __webpack_require__(/*! node:fs */ "node:fs");
 class BocDecompilerProvider {
     constructor() {
         this._onDidChange = new vscode.EventEmitter();
         this.onDidChange = this._onDidChange.event;
     }
-    provideTextDocumentContent(uri) {
+    async provideTextDocumentContent(uri) {
         const bocPath = this.getBocPath(uri);
         try {
-            return this.decompileBoc(bocPath);
+            return await this.decompileBoc(bocPath);
         }
         catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);
@@ -21246,10 +21246,10 @@ class BocDecompilerProvider {
         console.log("BOC path:", bocPath);
         return bocPath;
     }
-    decompileBoc(bocPath) {
+    async decompileBoc(bocPath) {
         try {
-            const content = (0, node_fs_1.readFileSync)(bocPath).toString("base64");
-            const cell = opcode_1.Cell.fromBase64(content);
+            const content = await fs.readFileRaw(bocPath);
+            const cell = opcode_1.Cell.fromBase64(content.toString("base64"));
             const program = (0, opcode_1.disassembleRoot)(cell, {
                 computeRefs: true,
             });
@@ -21280,10 +21280,6 @@ class BocDecompilerProvider {
             "// Error: " + error,
             "// Time: " + new Date().toISOString(),
         ].join("\n");
-    }
-    // Метод для обновления содержимого
-    update(uri) {
-        this._onDidChange.fire(uri);
     }
 }
 exports.BocDecompilerProvider = BocDecompilerProvider;
@@ -21346,7 +21342,7 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.BocFileSystemProvider = void 0;
 const vscode = __webpack_require__(/*! vscode */ "vscode");
 const BocDecompilerProvider_1 = __webpack_require__(/*! ./BocDecompilerProvider */ "./client/src/providers/BocDecompilerProvider.ts");
-const node_fs_1 = __webpack_require__(/*! node:fs */ "node:fs");
+const fs = __webpack_require__(/*! ../utils/fs */ "./client/src/utils/fs.ts");
 class BocFileSystemProvider {
     constructor() {
         this._emitter = new vscode.EventEmitter();
@@ -21370,7 +21366,7 @@ class BocFileSystemProvider {
     async readFile(uri) {
         console.log("Reading BOC file:", uri.fsPath);
         try {
-            const fileContent = (0, node_fs_1.readFileSync)(uri.fsPath);
+            const fileContent = await fs.readFile(uri.fsPath);
             console.log("File content length:", fileContent.length);
             const decompileUri = uri.with({
                 scheme: BocDecompilerProvider_1.BocDecompilerProvider.scheme,
@@ -21382,7 +21378,7 @@ class BocFileSystemProvider {
                 preview: true,
                 viewColumn: vscode.ViewColumn.Active,
             });
-            return fileContent;
+            return Uint8Array.from(fileContent);
         }
         catch (error) {
             console.error("Error reading BOC file:", error);
@@ -21398,6 +21394,44 @@ exports.BocFileSystemProvider = BocFileSystemProvider;
 
 /***/ }),
 
+/***/ "./client/src/utils/fs.ts":
+/*!********************************!*\
+  !*** ./client/src/utils/fs.ts ***!
+  \********************************/
+/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.readFile = readFile;
+exports.readFileRaw = readFileRaw;
+exports.writeFile = writeFile;
+exports.fileExists = fileExists;
+const vscode = __webpack_require__(/*! vscode */ "vscode");
+async function readFile(filePath) {
+    const contentArray = await vscode.workspace.fs.readFile(vscode.Uri.parse(filePath));
+    return Buffer.from(contentArray).toString("utf8");
+}
+async function readFileRaw(filePath) {
+    const contentArray = await vscode.workspace.fs.readFile(vscode.Uri.parse(filePath));
+    return Buffer.from(contentArray);
+}
+async function writeFile(filePath, content) {
+    await vscode.workspace.fs.writeFile(vscode.Uri.parse(filePath), Buffer.from(content));
+}
+async function fileExists(filePath) {
+    try {
+        await vscode.workspace.fs.readFile(vscode.Uri.parse(filePath));
+        return true;
+    }
+    catch {
+        return false;
+    }
+}
+
+
+/***/ }),
+
 /***/ "./client/src/utils/package-manager.ts":
 /*!*********************************************!*\
   !*** ./client/src/utils/package-manager.ts ***!
@@ -21409,29 +21443,29 @@ exports.BocFileSystemProvider = BocFileSystemProvider;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.detectPackageManager = detectPackageManager;
 const vscode = __webpack_require__(/*! vscode */ "vscode");
-const fs = __webpack_require__(/*! node:fs */ "node:fs");
 const path = __webpack_require__(/*! node:path */ "node:path");
-function detectPackageManager() {
+const fs_1 = __webpack_require__(/*! ./fs */ "./client/src/utils/fs.ts");
+async function detectPackageManager() {
     const workspaceFolders = vscode.workspace.workspaceFolders;
     if (!workspaceFolders || workspaceFolders.length === 0)
         return "npm";
     const workspaceRoot = workspaceFolders[0].uri.fsPath;
     // Check for lock files
-    if (fs.existsSync(path.join(workspaceRoot, "bun.lockb"))) {
+    if (await (0, fs_1.fileExists)(path.join(workspaceRoot, "bun.lockb"))) {
         return "bun";
     }
-    if (fs.existsSync(path.join(workspaceRoot, "yarn.lock"))) {
+    if (await (0, fs_1.fileExists)(path.join(workspaceRoot, "yarn.lock"))) {
         return "yarn";
     }
-    if (fs.existsSync(path.join(workspaceRoot, "pnpm-lock.yaml"))) {
+    if (await (0, fs_1.fileExists)(path.join(workspaceRoot, "pnpm-lock.yaml"))) {
         return "pnpm";
     }
-    if (fs.existsSync(path.join(workspaceRoot, "package-lock.json"))) {
+    if (await (0, fs_1.fileExists)(path.join(workspaceRoot, "package-lock.json"))) {
         return "npm";
     }
     try {
         const packageJsonPath = path.join(workspaceRoot, "package.json");
-        const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf8"));
+        const packageJson = JSON.parse(await (0, fs_1.readFile)(packageJsonPath));
         if (packageJson.packageManager) {
             if (packageJson.packageManager.startsWith("bun")) {
                 return "bun";
@@ -43768,17 +43802,6 @@ module.exports = require("node:buffer");
 
 /***/ }),
 
-/***/ "node:fs":
-/*!**************************!*\
-  !*** external "node:fs" ***!
-  \**************************/
-/***/ ((module) => {
-
-"use strict";
-module.exports = require("node:fs");
-
-/***/ }),
-
 /***/ "node:path":
 /*!****************************!*\
   !*** external "node:path" ***!
@@ -43903,7 +43926,7 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.activate = activate;
 exports.deactivate = deactivate;
 const vscode = __webpack_require__(/*! vscode */ "vscode");
-const fs = __webpack_require__(/*! node:fs */ "node:fs");
+const vscode_1 = __webpack_require__(/*! vscode */ "vscode");
 const path = __webpack_require__(/*! node:path */ "node:path");
 const vscode_uri_1 = __webpack_require__(/*! vscode-uri */ "./node_modules/vscode-uri/lib/umd/index.js");
 const node_1 = __webpack_require__(/*! vscode-languageclient/node */ "./node_modules/vscode-languageclient/node.js");
@@ -43916,12 +43939,11 @@ const BocEditorProvider_1 = __webpack_require__(/*! ./providers/BocEditorProvide
 const BocFileSystemProvider_1 = __webpack_require__(/*! ./providers/BocFileSystemProvider */ "./client/src/providers/BocFileSystemProvider.ts");
 const BocDecompilerProvider_1 = __webpack_require__(/*! ./providers/BocDecompilerProvider */ "./client/src/providers/BocDecompilerProvider.ts");
 const saveBocDecompiledCommand_1 = __webpack_require__(/*! ./commands/saveBocDecompiledCommand */ "./client/src/commands/saveBocDecompiledCommand.ts");
-const vscode_1 = __webpack_require__(/*! vscode */ "vscode");
 const package_manager_1 = __webpack_require__(/*! ./utils/package-manager */ "./client/src/utils/package-manager.ts");
 let client = null;
-function activate(context) {
+async function activate(context) {
     startServer(context).catch(client_log_1.consoleError);
-    (0, build_system_1.registerBuildTasks)(context);
+    await (0, build_system_1.registerBuildTasks)(context);
     (0, openBocCommand_1.registerOpenBocCommand)(context);
     (0, saveBocDecompiledCommand_1.registerSaveBocDecompiledCommand)(context);
     registerMistiCommand(context);
@@ -43991,6 +44013,15 @@ async function startServer(context) {
             : "";
         langStatusBar.text = `Tact ${version.version.number}${hash}`;
         langStatusBar.show();
+    });
+    client.onRequest("tact.readFile", async (params) => {
+        try {
+            const data = await vscode.workspace.fs.readFile(vscode_1.Uri.parse(params.uri));
+            return Buffer.from(data).toString("utf8");
+        }
+        catch { }
+        // eslint-disable-next-line unicorn/no-useless-undefined
+        return undefined;
     });
     return new vscode.Disposable(() => {
         disposables.forEach(d => void d.dispose());
@@ -44068,13 +44099,15 @@ function getInstallCommandForMisti(packageManager) {
         }
     }
 }
-function projectUsesMisti() {
+async function projectUsesMisti() {
     const workspaceFolders = vscode.workspace.workspaceFolders;
     if (!workspaceFolders || workspaceFolders.length === 0)
         return false;
     const packageJsonPath = path.join(workspaceFolders[0].uri.fsPath, "package.json");
     try {
-        const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf8"));
+        const contentArray = await vscode.workspace.fs.readFile(vscode_1.Uri.parse(packageJsonPath));
+        const content = Buffer.from(contentArray).toString("utf8");
+        const packageJson = JSON.parse(content);
         return (packageJson.dependencies?.["@nowarp/misti"] !== undefined ||
             packageJson.devDependencies?.["@nowarp/misti"] !== undefined);
     }
@@ -44085,8 +44118,8 @@ function projectUsesMisti() {
 }
 function registerMistiCommand(context) {
     context.subscriptions.push(vscode.commands.registerCommand("tact.runMisti", async () => {
-        if (!projectUsesMisti()) {
-            const packageManager = (0, package_manager_1.detectPackageManager)();
+        if (!(await projectUsesMisti())) {
+            const packageManager = await (0, package_manager_1.detectPackageManager)();
             const installCommand = getInstallCommandForMisti(packageManager);
             const result = await vscode.window.showErrorMessage("Misti is not installed in your project. Would you like to install it?", "Install Misti", "Cancel");
             if (result === "Install Misti") {

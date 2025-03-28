@@ -18153,6 +18153,7 @@ const vscode_uri_1 = __webpack_require__(/*! vscode-uri */ "./node_modules/vscod
 const parser_1 = __webpack_require__(/*! ./parser */ "./server/src/parser.ts");
 const indexes_1 = __webpack_require__(/*! ./indexes */ "./server/src/indexes/index.ts");
 const utils_1 = __webpack_require__(/*! @server/psi/utils */ "./server/src/psi/utils.ts");
+const vfs_1 = __webpack_require__(/*! @server/vfs/vfs */ "./server/src/vfs/vfs.ts");
 exports.PARSED_FILES_CACHE = new Map();
 exports.FIFT_PARSED_FILES_CACHE = new Map();
 var IndexingRootKind;
@@ -18166,7 +18167,6 @@ class IndexingRoot {
         this.kind = kind;
     }
     async index() {
-        const rootPath = this.root.slice(7);
         const ignore = this.kind === IndexingRootKind.Stdlib
             ? []
             : [
@@ -18191,7 +18191,7 @@ class IndexingRoot {
                 "**/tact-lang/compiler/**",
             ];
         const files = await (0, glob_1.glob)("**/*.tact", {
-            cwd: URL.parse(this.root) ?? rootPath,
+            cwd: new URL(this.root).pathname,
             ignore: ignore,
         });
         if (files.length === 0) {
@@ -18200,7 +18200,8 @@ class IndexingRoot {
         for (const filePath of files) {
             console.info("Indexing:", filePath);
             const uri = this.root + "/" + filePath;
-            const file = findFile(uri);
+            const content = await (0, vfs_1.readFile)(uri);
+            const file = findFile(uri, content);
             indexes_1.index.addFile(uri, file, false);
         }
     }
@@ -18211,6 +18212,9 @@ function findFile(uri, content, changed = false) {
     const cached = exports.PARSED_FILES_CACHE.get(normalizedUri);
     if (cached !== undefined && !changed) {
         return cached;
+    }
+    if (!content) {
+        throw new Error("dont use fs");
     }
     const fsPath = vscode_uri_1.URI.parse(normalizedUri).fsPath;
     let realContent = content ?? safeFileRead(fsPath);
@@ -24081,7 +24085,7 @@ exports.asNullableLspRange = asNullableLspRange;
 exports.asLspRange = asLspRange;
 exports.asLspPosition = asLspPosition;
 exports.asParserPoint = asParserPoint;
-const lsp = __webpack_require__(/*! vscode-languageserver/node */ "./node_modules/vscode-languageserver/node.js");
+const lsp = __webpack_require__(/*! vscode-languageserver */ "./node_modules/vscode-languageserver/lib/node/main.js");
 function asNullableLspRange(node) {
     if (!node) {
         return lsp.Range.create(0, 1, 0, 1);
@@ -24327,6 +24331,41 @@ function toPascalCase(text) {
         .filter(word => word.length > 0)
         .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
         .join("");
+}
+
+
+/***/ }),
+
+/***/ "./server/src/vfs/vfs.ts":
+/*!*******************************!*\
+  !*** ./server/src/vfs/vfs.ts ***!
+  \*******************************/
+/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.readFile = void 0;
+exports.createVfs = createVfs;
+const connection_1 = __webpack_require__(/*! @server/connection */ "./server/src/connection.ts");
+let vfs;
+const readFile = async (uri) => vfs.readFile(uri);
+exports.readFile = readFile;
+function createVfs(clientName) {
+    if (clientName?.includes("Code") || clientName?.includes("Codium")) {
+        vfs = {
+            readFile: async (uri) => {
+                return connection_1.connection.sendRequest("tact.readFile", { uri });
+            },
+        };
+        return;
+    }
+    vfs = {
+        readFile: async (uri) => {
+            // eslint-disable-next-line unicorn/no-await-expression-member
+            return (await Promise.resolve().then(() => __webpack_require__(/*! node:fs/promises */ "node:fs/promises"))).readFile(new URL(uri).pathname, "utf8");
+        },
+    };
 }
 
 
@@ -49617,6 +49656,7 @@ const exit_code_documentation_1 = __webpack_require__(/*! @server/documentation/
 const RewriteInspection_1 = __webpack_require__(/*! @server/inspections/RewriteInspection */ "./server/src/inspections/RewriteInspection.ts");
 const TypeTlbSerializationCompletionProvider_1 = __webpack_require__(/*! @server/completion/providers/TypeTlbSerializationCompletionProvider */ "./server/src/completion/providers/TypeTlbSerializationCompletionProvider.ts");
 const DontUseDeployableInspection_1 = __webpack_require__(/*! @server/inspections/DontUseDeployableInspection */ "./server/src/inspections/DontUseDeployableInspection.ts");
+const vfs_1 = __webpack_require__(/*! @server/vfs/vfs */ "./server/src/vfs/vfs.ts");
 /**
  * Whenever LS is initialized.
  *
@@ -49820,6 +49860,7 @@ connection_1.connection.onInitialize(async (initParams) => {
     if (initParams.clientInfo) {
         clientInfo = initParams.clientInfo;
     }
+    (0, vfs_1.createVfs)(clientInfo.name);
     workspaceFolders = initParams.workspaceFolders ?? [];
     const opts = initParams.initializationOptions;
     const treeSitterUri = opts?.treeSitterWasmUri ?? `${__dirname}/tree-sitter.wasm`;
@@ -49833,7 +49874,8 @@ connection_1.connection.onInitialize(async (initParams) => {
         if (!initialized) {
             await initializeFallback(uri);
         }
-        const file = (0, indexing_root_1.findFile)(uri);
+        const text = event.document.getText();
+        const file = (0, indexing_root_1.findFile)(uri, text);
         indexes_1.index.addFile(uri, file);
         if (event.document.languageId === "tact" || uri.endsWith(".tact")) {
             await runInspections(uri, file);
